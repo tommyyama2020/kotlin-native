@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <math.h>
 #include <limits.h>
+#include <math.h>
 
 #include "DoubleConversions.h"
 #include "Natives.h"
@@ -24,51 +24,71 @@
 
 extern "C" {
 
-//--- Float -------------------------------------------------------------------//
+//--- Float ------------------------------------------------------------------//
 
-KInt    Kotlin_Float_toInt(KFloat a) {
-  if (isnan(a)) return 0;
-  if (a >= (KFloat) INT32_MAX) return INT32_MAX;
-  if (a <= (KFloat) INT32_MIN) return INT32_MIN;
+KInt Kotlin_Float_toInt(KFloat a) {
+  if (isnan(a))
+    return 0;
+  if (a >= (KFloat)INT32_MAX)
+    return INT32_MAX;
+  if (a <= (KFloat)INT32_MIN)
+    return INT32_MIN;
   return a;
 }
 
-KLong   Kotlin_Float_toLong(KFloat a) {
-  if (isnan(a)) return 0;
-  if (a >= (KFloat) INT64_MAX) return INT64_MAX;
-  if (a <= (KFloat) INT64_MIN) return INT64_MIN;
+KLong Kotlin_Float_toLong(KFloat a) {
+  if (isnan(a))
+    return 0;
+  if (a >= (KFloat)INT64_MAX)
+    return INT64_MAX;
+  if (a <= (KFloat)INT64_MIN)
+    return INT64_MIN;
   return a;
 }
 
+// TODO: Decide how to format one-line functions
+// clang-format off
 KByte   Kotlin_Float_toByte(KFloat a) { return (KByte)  Kotlin_Float_toInt(a); }
 KShort  Kotlin_Float_toShort(KFloat a) { return (KShort) Kotlin_Float_toInt(a); }
 
 ALWAYS_INLINE KBoolean Kotlin_Float_isNaN(KFloat a)          { return isnan(a); }
 ALWAYS_INLINE KBoolean Kotlin_Float_isInfinite(KFloat a)          { return isinf(a); }
 ALWAYS_INLINE KBoolean Kotlin_Float_isFinite(KFloat a)          { return isfinite(a); }
+// clang-format on
 
-//--- Double ------------------------------------------------------------------//
+//--- Double -----------------------------------------------------------------//
 
 KInt Kotlin_Double_toInt(KDouble a) {
-  if (isnan(a)) return 0;
-  if (a >= (KDouble) INT32_MAX) return INT32_MAX;
-  if (a <= (KDouble) INT32_MIN) return INT32_MIN;
+  if (isnan(a))
+    return 0;
+  if (a >= (KDouble)INT32_MAX)
+    return INT32_MAX;
+  if (a <= (KDouble)INT32_MIN)
+    return INT32_MIN;
   return a;
 }
 
 KLong Kotlin_Double_toLong(KDouble a) {
-  if (isnan(a)) return 0;
-  if (a >= (KDouble) INT64_MAX) return INT64_MAX;
-  if (a <= (KDouble) INT64_MIN) return INT64_MIN;
+  if (isnan(a))
+    return 0;
+  if (a >= (KDouble)INT64_MAX)
+    return INT64_MAX;
+  if (a <= (KDouble)INT64_MIN)
+    return INT64_MIN;
   return a;
 }
 
+// TODO: Decide how to format one-line functions
+// clang-format off
 ALWAYS_INLINE KBoolean Kotlin_Double_isNaN(KDouble a)          { return isnan(a); }
 ALWAYS_INLINE KBoolean Kotlin_Double_isInfinite(KDouble a)          { return isinf(a); }
 ALWAYS_INLINE KBoolean Kotlin_Double_isFinite(KDouble a)          { return isfinite(a); }
+// clang-format on
 
 //--- Bit operations ---------------------------------------------------------//
 
+// TODO: Decide how to format one-line functions
+// clang-format off
 ALWAYS_INLINE KInt Kotlin_Int_countOneBits(KInt value) { return __builtin_popcount(value); }
 ALWAYS_INLINE KInt Kotlin_Long_countOneBits(KLong value) { return __builtin_popcountll(value); }
 
@@ -77,5 +97,6 @@ ALWAYS_INLINE KInt Kotlin_Long_countTrailingZeroBits(KLong value) { return __bui
 
 ALWAYS_INLINE KInt Kotlin_Int_countLeadingZeroBits(KInt value) { return __builtin_clz(value); }
 ALWAYS_INLINE KInt Kotlin_Long_countLeadingZeroBits(KLong value) { return __builtin_clzll(value); }
+// clang-format on
 
 }  // extern "C"

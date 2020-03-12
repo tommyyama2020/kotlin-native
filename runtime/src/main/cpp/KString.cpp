@@ -15,12 +15,12 @@
  */
 #include <string.h>
 
-#include "KAssert.h"
 #include "City.h"
 #include "Exceptions.h"
+#include "KAssert.h"
+#include "KString.h"
 #include "Memory.h"
 #include "Natives.h"
-#include "KString.h"
 #include "Porting.h"
 #include "Types.h"
 
@@ -30,32 +30,39 @@ namespace {
 
 typedef std::back_insert_iterator<KStdString> KStdStringInserter;
 typedef KChar* utf8to16(const char*, const char*, KChar*);
-typedef KStdStringInserter utf16to8(const KChar*,const KChar*, KStdStringInserter);
+typedef KStdStringInserter utf16to8(const KChar*, const KChar*,
+                                    KStdStringInserter);
 
-KStdStringInserter utf16toUtf8OrThrow(const KChar* start, const KChar* end, KStdStringInserter result) {
+KStdStringInserter utf16toUtf8OrThrow(const KChar* start, const KChar* end,
+                                      KStdStringInserter result) {
   TRY_CATCH(result = utf8::utf16to8(start, end, result),
             result = utf8::unchecked::utf16to8(start, end, result),
             ThrowCharacterCodingException());
   return result;
 }
 
-template<utf8to16 conversion>
-OBJ_GETTER(utf8ToUtf16Impl, const char* rawString, const char* end, uint32_t charCount) {
-  if (rawString == nullptr) RETURN_OBJ(nullptr);
-  ArrayHeader* result = AllocArrayInstance(theStringTypeInfo, charCount, OBJ_RESULT)->array();
+template <utf8to16 conversion>
+OBJ_GETTER(utf8ToUtf16Impl, const char* rawString, const char* end,
+           uint32_t charCount) {
+  if (rawString == nullptr)
+    RETURN_OBJ(nullptr);
+  ArrayHeader* result =
+      AllocArrayInstance(theStringTypeInfo, charCount, OBJ_RESULT)->array();
   KChar* rawResult = CharArrayAddressOfElementAt(result, 0);
   auto convertResult = conversion(rawString, end, rawResult);
   RETURN_OBJ(result->obj());
 }
 
-template<utf16to8 conversion>
+template <utf16to8 conversion>
 OBJ_GETTER(unsafeUtf16ToUtf8Impl, KString thiz, KInt start, KInt size) {
   RuntimeAssert(thiz->type_info() == theStringTypeInfo, "Must use String");
   const KChar* utf16 = CharArrayAddressOfElementAt(thiz, start);
   KStdString utf8;
   utf8.reserve(size);
   conversion(utf16, utf16 + size, back_inserter(utf8));
-  ArrayHeader* result = AllocArrayInstance(theByteArrayTypeInfo, utf8.size(), OBJ_RESULT)->array();
+  ArrayHeader* result =
+      AllocArrayInstance(theByteArrayTypeInfo, utf8.size(), OBJ_RESULT)
+          ->array();
   ::memcpy(ByteArrayAddressOfElementAt(result, 0), utf8.c_str(), utf8.size());
   RETURN_OBJ(result->obj());
 }
@@ -66,141 +73,144 @@ OBJ_GETTER(utf8ToUtf16OrThrow, const char* rawString, size_t rawStringLength) {
   TRY_CATCH(charCount = utf8::utf16_length(rawString, end),
             charCount = utf8::unchecked::utf16_length(rawString, end),
             ThrowCharacterCodingException());
-  RETURN_RESULT_OF(utf8ToUtf16Impl<utf8::unchecked::utf8to16>, rawString, end, charCount);
+  RETURN_RESULT_OF(utf8ToUtf16Impl<utf8::unchecked::utf8to16>, rawString, end,
+                   charCount);
 }
 
 OBJ_GETTER(utf8ToUtf16, const char* rawString, size_t rawStringLength) {
   const char* end = rawString + rawStringLength;
   uint32_t charCount = utf8::with_replacement::utf16_length(rawString, end);
-  RETURN_RESULT_OF(utf8ToUtf16Impl<utf8::with_replacement::utf8to16>, rawString, end, charCount);
+  RETURN_RESULT_OF(utf8ToUtf16Impl<utf8::with_replacement::utf8to16>, rawString,
+                   end, charCount);
 }
-
 
 // Case conversion is derived work from Apache Harmony.
 // Unicode 3.0.1 (same as Unicode 3.0.0)
 enum CharacterClass {
-    /**
-     * Unicode category constant Cn.
-     */
-    UNASSIGNED = 0,
-    /**
-     * Unicode category constant Lu.
-     */
-    UPPERCASE_LETTER = 1,
-    /**
-     * Unicode category constant Ll.
-     */
-    LOWERCASE_LETTER = 2,
-    /**
-     * Unicode category constant Lt.
-     */
-    TITLECASE_LETTER = 3,
-    /**
-     * Unicode category constant Lm.
-     */
-    MODIFIER_LETTER = 4,
-    /**
-     * Unicode category constant Lo.
-     */
-    OTHER_LETTER = 5,
-    /**
-     * Unicode category constant Mn.
-     */
-    NON_SPACING_MARK = 6,
-    /**
-     * Unicode category constant Me.
-     */
-    ENCLOSING_MARK = 7,
-    /**
-     * Unicode category constant Mc.
-     */
-    COMBINING_SPACING_MARK = 8,
-    /**
-     * Unicode category constant Nd.
-     */
-    DECIMAL_DIGIT_NUMBER = 9,
-    /**
-     * Unicode category constant Nl.
-     */
-    LETTER_NUMBER = 10,
-    /**
-     * Unicode category constant No.
-     */
-    OTHER_NUMBER = 11,
-    /**
-     * Unicode category constant Zs.
-     */
-    SPACE_SEPARATOR = 12,
-    /**
-     * Unicode category constant Zl.
-     */
-    LINE_SEPARATOR = 13,
-    /**
-     * Unicode category constant Zp.
-     */
-    PARAGRAPH_SEPARATOR = 14,
-    /**
-     * Unicode category constant Cc.
-     */
-    CONTROL = 15,
-    /**
-     * Unicode category constant Cf.
-     */
-    FORMAT = 16,
-    /**
-     * Unicode category constant Co.
-     */
-    PRIVATE_USE = 18,
-    /**
-     * Unicode category constant Cs.
-     */
-    SURROGATE = 19,
-    /**
-     * Unicode category constant Pd.
-     */
-    DASH_PUNCTUATION = 20,
-    /**
-     * Unicode category constant Ps.
-     */
-    START_PUNCTUATION = 21,
-    /**
-     * Unicode category constant Pe.
-     */
-    END_PUNCTUATION = 22,
-    /**
-     * Unicode category constant Pc.
-     */
-    CONNECTOR_PUNCTUATION = 23,
-    /**
-     * Unicode category constant Po.
-     */
-    OTHER_PUNCTUATION = 24,
-    /**
-     * Unicode category constant Sm.
-     */
-    MATH_SYMBOL = 25,
-    /**
-     * Unicode category constant Sc.
-     */
-    CURRENCY_SYMBOL = 26,
-    /**
-     * Unicode category constant Sk.
-     */
-    MODIFIER_SYMBOL = 27,
-    /**
-     * Unicode category constant So.
-     */
-    OTHER_SYMBOL = 28,
-    /**
-     * Unicode category constant Pi.
-     */
-    INITIAL_QUOTE_PUNCTUATION = 29,
-    /**
-     * Unicode category constant Pf.
-     */
-    FINAL_QUOTE_PUNCTUATION = 30
+  /**
+   * Unicode category constant Cn.
+   */
+  UNASSIGNED = 0,
+  /**
+   * Unicode category constant Lu.
+   */
+  UPPERCASE_LETTER = 1,
+  /**
+   * Unicode category constant Ll.
+   */
+  LOWERCASE_LETTER = 2,
+  /**
+   * Unicode category constant Lt.
+   */
+  TITLECASE_LETTER = 3,
+  /**
+   * Unicode category constant Lm.
+   */
+  MODIFIER_LETTER = 4,
+  /**
+   * Unicode category constant Lo.
+   */
+  OTHER_LETTER = 5,
+  /**
+   * Unicode category constant Mn.
+   */
+  NON_SPACING_MARK = 6,
+  /**
+   * Unicode category constant Me.
+   */
+  ENCLOSING_MARK = 7,
+  /**
+   * Unicode category constant Mc.
+   */
+  COMBINING_SPACING_MARK = 8,
+  /**
+   * Unicode category constant Nd.
+   */
+  DECIMAL_DIGIT_NUMBER = 9,
+  /**
+   * Unicode category constant Nl.
+   */
+  LETTER_NUMBER = 10,
+  /**
+   * Unicode category constant No.
+   */
+  OTHER_NUMBER = 11,
+  /**
+   * Unicode category constant Zs.
+   */
+  SPACE_SEPARATOR = 12,
+  /**
+   * Unicode category constant Zl.
+   */
+  LINE_SEPARATOR = 13,
+  /**
+   * Unicode category constant Zp.
+   */
+  PARAGRAPH_SEPARATOR = 14,
+  /**
+   * Unicode category constant Cc.
+   */
+  CONTROL = 15,
+  /**
+   * Unicode category constant Cf.
+   */
+  FORMAT = 16,
+  /**
+   * Unicode category constant Co.
+   */
+  PRIVATE_USE = 18,
+  /**
+   * Unicode category constant Cs.
+   */
+  SURROGATE = 19,
+  /**
+   * Unicode category constant Pd.
+   */
+  DASH_PUNCTUATION = 20,
+  /**
+   * Unicode category constant Ps.
+   */
+  START_PUNCTUATION = 21,
+  /**
+   * Unicode category constant Pe.
+   */
+  END_PUNCTUATION = 22,
+  /**
+   * Unicode category constant Pc.
+   */
+  CONNECTOR_PUNCTUATION = 23,
+  /**
+   * Unicode category constant Po.
+   */
+  OTHER_PUNCTUATION = 24,
+  /**
+   * Unicode category constant Sm.
+   */
+  MATH_SYMBOL = 25,
+  /**
+   * Unicode category constant Sc.
+   */
+  CURRENCY_SYMBOL = 26,
+  /**
+   * Unicode category constant Sk.
+   */
+  MODIFIER_SYMBOL = 27,
+  /**
+   * Unicode category constant So.
+   */
+  OTHER_SYMBOL = 28,
+  /**
+   * Unicode category constant Pi.
+   */
+  INITIAL_QUOTE_PUNCTUATION = 29,
+  /**
+   * Unicode category constant Pf.
+   */
+  FINAL_QUOTE_PUNCTUATION = 30
 };
 
+// TODO: Format this code
+// clang-format off
 constexpr KByte typeValuesCache[] = {
   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
@@ -552,6 +562,7 @@ constexpr KChar typeValues[] = {
   0xff62, 0x1815, 0xff64, 0x1618, 0xff66, 0x1705, 0xff6f, 0x5, 0xff71, 0x504, 0xff9d, 0x5, 0xff9f, 0x4, 0xffbe, 0x5, 0xffc7, 0x5, 0xffcf, 0x5,
   0xffd7, 0x5, 0xffdc, 0x5, 0xffe1, 0x1a, 0xffe3, 0x1b19, 0xffe5, 0x1a1c, 0xffe6, 0x1a, 0xffe9, 0x191c, 0xffec, 0x19, 0xffee, 0x1c, 0xfffb, 0x10
 };
+// clang-format on
 
 KInt getType(KChar ch) {
   if (ch < 1000) {
@@ -656,8 +667,8 @@ int iswalpha_Konan(KChar ch) {
 
 int iswalnum_Konan(KChar ch) {
   int type = getType(ch);
-  return (type >= UPPERCASE_LETTER && type <= OTHER_LETTER)
-      || type == DECIMAL_DIGIT_NUMBER;
+  return (type >= UPPERCASE_LETTER && type <= OTHER_LETTER) ||
+         type == DECIMAL_DIGIT_NUMBER;
 }
 
 int iswspace_Konan(KChar ch) {
@@ -669,9 +680,10 @@ int iswspace_Konan(KChar ch) {
   if (ch < 0x2000 && !(ch == 0x1680 || ch == 0x85 || ch == 0xA0)) {
     return false;
   }
-  // if # Zl LINE SEPARATOR or # Zp PARAGRAPH SEPARATOR or # Zs NARROW NO-BREAK SPACE
-  // or # Zs MEDIUM MATHEMATICAL SPACE or # Zs IDEOGRAPHIC SPACE
-  return ch < 0x200b || ch == 0x2028 || ch == 0x2029 || ch == 0x202F || ch == 0x205F || ch == 0x3000;
+  // if # Zl LINE SEPARATOR or # Zp PARAGRAPH SEPARATOR or # Zs NARROW NO-BREAK
+  // SPACE or # Zs MEDIUM MATHEMATICAL SPACE or # Zs IDEOGRAPHIC SPACE
+  return ch < 0x200b || ch == 0x2028 || ch == 0x2029 || ch == 0x202F ||
+         ch == 0x205F || ch == 0x3000;
 }
 
 int iswupper_Konan(KChar ch) {
@@ -698,7 +710,7 @@ int iswlower_Konan(KChar ch) {
   return getType(ch) == LOWERCASE_LETTER;
 }
 
-} // namespace
+}  // namespace
 
 extern "C" {
 
@@ -711,32 +723,38 @@ OBJ_GETTER(CreateStringFromUtf8, const char* utf8, uint32_t lengthBytes) {
 }
 
 char* CreateCStringFromString(KConstRef kref) {
-  if (kref == nullptr) return nullptr;
+  if (kref == nullptr)
+    return nullptr;
   KString kstring = kref->array();
   const KChar* utf16 = CharArrayAddressOfElementAt(kstring, 0);
   KStdString utf8;
   utf8.reserve(kstring->count_);
-  utf8::unchecked::utf16to8(utf16, utf16 + kstring->count_, back_inserter(utf8));
+  utf8::unchecked::utf16to8(utf16, utf16 + kstring->count_,
+                            back_inserter(utf8));
   char* result = reinterpret_cast<char*>(konan::calloc(1, utf8.size() + 1));
   ::memcpy(result, utf8.c_str(), utf8.size());
   return result;
 }
 
 void DisposeCString(char* cstring) {
-  if (cstring) konan::free(cstring);
+  if (cstring)
+    konan::free(cstring);
 }
 
 // String.kt
-OBJ_GETTER(Kotlin_String_replace, KString thiz, KChar oldChar, KChar newChar, KBoolean ignoreCase) {
+OBJ_GETTER(Kotlin_String_replace, KString thiz, KChar oldChar, KChar newChar,
+           KBoolean ignoreCase) {
   auto count = thiz->count_;
-  ArrayHeader* result = AllocArrayInstance(theStringTypeInfo, count, OBJ_RESULT)->array();
+  ArrayHeader* result =
+      AllocArrayInstance(theStringTypeInfo, count, OBJ_RESULT)->array();
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, 0);
   KChar* resultRaw = CharArrayAddressOfElementAt(result, 0);
   if (ignoreCase) {
     KChar oldCharLower = towlower_Konan(oldChar);
     for (KInt index = 0; index < count; ++index) {
       KChar thizChar = *thizRaw++;
-      *resultRaw++ = towlower_Konan(thizChar) == oldCharLower ? newChar : thizChar;
+      *resultRaw++ =
+          towlower_Konan(thizChar) == oldCharLower ? newChar : thizChar;
     }
   } else {
     for (KInt index = 0; index < count; ++index) {
@@ -756,21 +774,19 @@ OBJ_GETTER(Kotlin_String_plusImpl, KString thiz, KString other) {
   if (result_length < thiz->count_ || result_length < other->count_) {
     ThrowArrayIndexOutOfBoundsException();
   }
-  ArrayHeader* result = AllocArrayInstance(theStringTypeInfo, result_length, OBJ_RESULT)->array();
-  memcpy(
-      CharArrayAddressOfElementAt(result, 0),
-      CharArrayAddressOfElementAt(thiz, 0),
-      thiz->count_ * sizeof(KChar));
-  memcpy(
-      CharArrayAddressOfElementAt(result, thiz->count_),
-      CharArrayAddressOfElementAt(other, 0),
-      other->count_ * sizeof(KChar));
+  ArrayHeader* result =
+      AllocArrayInstance(theStringTypeInfo, result_length, OBJ_RESULT)->array();
+  memcpy(CharArrayAddressOfElementAt(result, 0),
+         CharArrayAddressOfElementAt(thiz, 0), thiz->count_ * sizeof(KChar));
+  memcpy(CharArrayAddressOfElementAt(result, thiz->count_),
+         CharArrayAddressOfElementAt(other, 0), other->count_ * sizeof(KChar));
   RETURN_OBJ(result->obj());
 }
 
 OBJ_GETTER(Kotlin_String_toUpperCase, KString thiz) {
   auto count = thiz->count_;
-  ArrayHeader* result = AllocArrayInstance(theStringTypeInfo, count, OBJ_RESULT)->array();
+  ArrayHeader* result =
+      AllocArrayInstance(theStringTypeInfo, count, OBJ_RESULT)->array();
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, 0);
   KChar* resultRaw = CharArrayAddressOfElementAt(result, 0);
   for (KInt index = 0; index < count; ++index) {
@@ -781,7 +797,8 @@ OBJ_GETTER(Kotlin_String_toUpperCase, KString thiz) {
 
 OBJ_GETTER(Kotlin_String_toLowerCase, KString thiz) {
   auto count = thiz->count_;
-  ArrayHeader* result = AllocArrayInstance(theStringTypeInfo, count, OBJ_RESULT)->array();
+  ArrayHeader* result =
+      AllocArrayInstance(theStringTypeInfo, count, OBJ_RESULT)->array();
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, 0);
   KChar* resultRaw = CharArrayAddressOfElementAt(result, 0);
   for (KInt index = 0; index < count; ++index) {
@@ -790,30 +807,33 @@ OBJ_GETTER(Kotlin_String_toLowerCase, KString thiz) {
   RETURN_OBJ(result->obj());
 }
 
-OBJ_GETTER(Kotlin_String_unsafeStringFromCharArray, KConstRef thiz, KInt start, KInt size) {
+OBJ_GETTER(Kotlin_String_unsafeStringFromCharArray, KConstRef thiz, KInt start,
+           KInt size) {
   const ArrayHeader* array = thiz->array();
-  RuntimeAssert(array->type_info() == theCharArrayTypeInfo, "Must use a char array");
+  RuntimeAssert(array->type_info() == theCharArrayTypeInfo,
+                "Must use a char array");
 
   if (size == 0) {
     RETURN_RESULT_OF0(TheEmptyString);
   }
 
-  ArrayHeader* result = AllocArrayInstance(theStringTypeInfo, size, OBJ_RESULT)->array();
+  ArrayHeader* result =
+      AllocArrayInstance(theStringTypeInfo, size, OBJ_RESULT)->array();
   memcpy(CharArrayAddressOfElementAt(result, 0),
-         CharArrayAddressOfElementAt(array, start),
-         size * sizeof(KChar));
+         CharArrayAddressOfElementAt(array, start), size * sizeof(KChar));
   RETURN_OBJ(result->obj());
 }
 
 OBJ_GETTER(Kotlin_String_toCharArray, KString string, KInt start, KInt size) {
-  ArrayHeader* result = AllocArrayInstance(theCharArrayTypeInfo, size, OBJ_RESULT)->array();
+  ArrayHeader* result =
+      AllocArrayInstance(theCharArrayTypeInfo, size, OBJ_RESULT)->array();
   memcpy(CharArrayAddressOfElementAt(result, 0),
-         CharArrayAddressOfElementAt(string, start),
-         size * sizeof(KChar));
+         CharArrayAddressOfElementAt(string, start), size * sizeof(KChar));
   RETURN_OBJ(result->obj());
 }
 
-OBJ_GETTER(Kotlin_String_subSequence, KString thiz, KInt startIndex, KInt endIndex) {
+OBJ_GETTER(Kotlin_String_subSequence, KString thiz, KInt startIndex,
+           KInt endIndex) {
   if (startIndex < 0 || endIndex > thiz->count_ || startIndex > endIndex) {
     // TODO: is it correct exception?
     ThrowArrayIndexOutOfBoundsException();
@@ -822,31 +842,37 @@ OBJ_GETTER(Kotlin_String_subSequence, KString thiz, KInt startIndex, KInt endInd
     RETURN_RESULT_OF0(TheEmptyString);
   }
   KInt length = endIndex - startIndex;
-  ArrayHeader* result = AllocArrayInstance(theStringTypeInfo, length, OBJ_RESULT)->array();
+  ArrayHeader* result =
+      AllocArrayInstance(theStringTypeInfo, length, OBJ_RESULT)->array();
   memcpy(CharArrayAddressOfElementAt(result, 0),
-         CharArrayAddressOfElementAt(thiz, startIndex),
-         length * sizeof(KChar));
+         CharArrayAddressOfElementAt(thiz, startIndex), length * sizeof(KChar));
   RETURN_OBJ(result->obj());
 }
 
 KInt Kotlin_String_compareTo(KString thiz, KString other) {
-  int result = memcmp(
-    CharArrayAddressOfElementAt(thiz, 0),
-    CharArrayAddressOfElementAt(other, 0),
-    (thiz->count_ < other->count_ ? thiz->count_ : other->count_) * sizeof(KChar));
-  if (result != 0) return result;
+  int result =
+      memcmp(CharArrayAddressOfElementAt(thiz, 0),
+             CharArrayAddressOfElementAt(other, 0),
+             (thiz->count_ < other->count_ ? thiz->count_ : other->count_) *
+                 sizeof(KChar));
+  if (result != 0)
+    return result;
   int diff = thiz->count_ - other->count_;
-  if (diff == 0) return 0;
+  if (diff == 0)
+    return 0;
   return diff < 0 ? -1 : 1;
 }
 
 KInt Kotlin_String_compareToIgnoreCase(KString thiz, KConstRef other) {
   RuntimeAssert(thiz->type_info() == theStringTypeInfo &&
-                other->type_info() == theStringTypeInfo, "Must be strings");
+                    other->type_info() == theStringTypeInfo,
+                "Must be strings");
   // Important, due to literal internalization.
   KString otherString = other->array();
-  if (thiz == otherString) return 0;
-  auto count = thiz->count_ < otherString->count_ ? thiz->count_ : otherString->count_;
+  if (thiz == otherString)
+    return 0;
+  auto count =
+      thiz->count_ < otherString->count_ ? thiz->count_ : otherString->count_;
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, 0);
   const KChar* otherRaw = CharArrayAddressOfElementAt(otherString, 0);
   for (KInt index = 0; index < count; ++index) {
@@ -862,7 +888,6 @@ KInt Kotlin_String_compareToIgnoreCase(KString thiz, KConstRef other) {
     return 1;
 }
 
-
 KChar Kotlin_String_get(KString thiz, KInt index) {
   if (static_cast<uint32_t>(index) >= thiz->count_) {
     ThrowArrayIndexOutOfBoundsException();
@@ -876,11 +901,14 @@ KInt Kotlin_String_getStringLength(KString thiz) {
 
 const char* unsafeByteArrayAsCString(KConstRef thiz, KInt start, KInt size) {
   const ArrayHeader* array = thiz->array();
-  RuntimeAssert(array->type_info() == theByteArrayTypeInfo, "Must use a byte array");
-  return reinterpret_cast<const char*>(ByteArrayAddressOfElementAt(array, start));
+  RuntimeAssert(array->type_info() == theByteArrayTypeInfo,
+                "Must use a byte array");
+  return reinterpret_cast<const char*>(
+      ByteArrayAddressOfElementAt(array, start));
 }
 
-OBJ_GETTER(Kotlin_ByteArray_unsafeStringFromUtf8OrThrow, KConstRef thiz, KInt start, KInt size) {
+OBJ_GETTER(Kotlin_ByteArray_unsafeStringFromUtf8OrThrow, KConstRef thiz,
+           KInt start, KInt size) {
   if (size == 0) {
     RETURN_RESULT_OF0(TheEmptyString);
   }
@@ -888,7 +916,8 @@ OBJ_GETTER(Kotlin_ByteArray_unsafeStringFromUtf8OrThrow, KConstRef thiz, KInt st
   RETURN_RESULT_OF(utf8ToUtf16OrThrow, rawString, size);
 }
 
-OBJ_GETTER(Kotlin_ByteArray_unsafeStringFromUtf8, KConstRef thiz, KInt start, KInt size) {
+OBJ_GETTER(Kotlin_ByteArray_unsafeStringFromUtf8, KConstRef thiz, KInt start,
+           KInt size) {
   if (size == 0) {
     RETURN_RESULT_OF0(TheEmptyString);
   }
@@ -896,18 +925,26 @@ OBJ_GETTER(Kotlin_ByteArray_unsafeStringFromUtf8, KConstRef thiz, KInt start, KI
   RETURN_RESULT_OF(utf8ToUtf16, rawString, size);
 }
 
-OBJ_GETTER(Kotlin_String_unsafeStringToUtf8, KString thiz, KInt start, KInt size) {
-  RETURN_RESULT_OF(unsafeUtf16ToUtf8Impl<utf8::with_replacement::utf16to8>, thiz, start, size);
+OBJ_GETTER(Kotlin_String_unsafeStringToUtf8, KString thiz, KInt start,
+           KInt size) {
+  RETURN_RESULT_OF(unsafeUtf16ToUtf8Impl<utf8::with_replacement::utf16to8>,
+                   thiz, start, size);
 }
 
-OBJ_GETTER(Kotlin_String_unsafeStringToUtf8OrThrow, KString thiz, KInt start, KInt size) {
-  RETURN_RESULT_OF(unsafeUtf16ToUtf8Impl<utf16toUtf8OrThrow>, thiz, start, size);
+OBJ_GETTER(Kotlin_String_unsafeStringToUtf8OrThrow, KString thiz, KInt start,
+           KInt size) {
+  RETURN_RESULT_OF(unsafeUtf16ToUtf8Impl<utf16toUtf8OrThrow>, thiz, start,
+                   size);
 }
 
-KInt Kotlin_StringBuilder_insertString(KRef builder, KInt distIndex, KString fromString, KInt sourceIndex, KInt count) {
+KInt Kotlin_StringBuilder_insertString(KRef builder, KInt distIndex,
+                                       KString fromString, KInt sourceIndex,
+                                       KInt count) {
   auto toArray = builder->array();
-  RuntimeAssert(sourceIndex >= 0 && sourceIndex + count <= fromString->count_, "must be true");
-  RuntimeAssert(distIndex >= 0 && distIndex + count <= toArray->count_, "must be true");
+  RuntimeAssert(sourceIndex >= 0 && sourceIndex + count <= fromString->count_,
+                "must be true");
+  RuntimeAssert(distIndex >= 0 && distIndex + count <= toArray->count_,
+                "must be true");
   memcpy(CharArrayAddressOfElementAt(toArray, distIndex),
          CharArrayAddressOfElementAt(fromString, sourceIndex),
          count * sizeof(KChar));
@@ -928,30 +965,35 @@ KInt Kotlin_StringBuilder_insertInt(KRef builder, KInt position, KInt value) {
   return length;
 }
 
-
 KBoolean Kotlin_String_equals(KString thiz, KConstRef other) {
-  if (other == nullptr || other->type_info() != theStringTypeInfo) return false;
+  if (other == nullptr || other->type_info() != theStringTypeInfo)
+    return false;
   // Important, due to literal internalization.
   KString otherString = other->array();
-  if (thiz == otherString) return true;
+  if (thiz == otherString)
+    return true;
   return thiz->count_ == otherString->count_ &&
-      memcmp(CharArrayAddressOfElementAt(thiz, 0),
-             CharArrayAddressOfElementAt(otherString, 0),
-             thiz->count_ * sizeof(KChar)) == 0;
+         memcmp(CharArrayAddressOfElementAt(thiz, 0),
+                CharArrayAddressOfElementAt(otherString, 0),
+                thiz->count_ * sizeof(KChar)) == 0;
 }
 
 KBoolean Kotlin_String_equalsIgnoreCase(KString thiz, KConstRef other) {
   RuntimeAssert(thiz->type_info() == theStringTypeInfo &&
-                other->type_info() == theStringTypeInfo, "Must be strings");
+                    other->type_info() == theStringTypeInfo,
+                "Must be strings");
   // Important, due to literal internalization.
   KString otherString = other->array();
-  if (thiz == otherString) return true;
-  if (thiz->count_ != otherString->count_) return false;
+  if (thiz == otherString)
+    return true;
+  if (thiz->count_ != otherString->count_)
+    return false;
   auto count = thiz->count_;
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, 0);
   const KChar* otherRaw = CharArrayAddressOfElementAt(otherString, 0);
   for (KInt index = 0; index < count; ++index) {
-    if (towlower_Konan(*thizRaw++) != towlower_Konan(*otherRaw++)) return false;
+    if (towlower_Konan(*thizRaw++) != towlower_Konan(*otherRaw++))
+      return false;
   }
   return true;
 }
@@ -959,20 +1001,23 @@ KBoolean Kotlin_String_equalsIgnoreCase(KString thiz, KConstRef other) {
 KBoolean Kotlin_String_regionMatches(KString thiz, KInt thizOffset,
                                      KString other, KInt otherOffset,
                                      KInt length, KBoolean ignoreCase) {
-  if (length < 0 ||
-      thizOffset < 0 || length > static_cast<KInt>(thiz->count_) - thizOffset ||
-      otherOffset < 0 || length > static_cast<KInt>(other->count_) - otherOffset) {
+  if (length < 0 || thizOffset < 0 ||
+      length > static_cast<KInt>(thiz->count_) - thizOffset ||
+      otherOffset < 0 ||
+      length > static_cast<KInt>(other->count_) - otherOffset) {
     return false;
   }
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, thizOffset);
   const KChar* otherRaw = CharArrayAddressOfElementAt(other, otherOffset);
   if (ignoreCase) {
     for (KInt index = 0; index < length; ++index) {
-      if (towlower_Konan(*thizRaw++) != towlower_Konan(*otherRaw++)) return false;
+      if (towlower_Konan(*thizRaw++) != towlower_Konan(*otherRaw++))
+        return false;
     }
   } else {
     for (KInt index = 0; index < length; ++index) {
-      if (*thizRaw++ != *otherRaw++) return false;
+      if (*thizRaw++ != *otherRaw++)
+        return false;
     }
   }
   return true;
@@ -997,7 +1042,8 @@ KBoolean Kotlin_Char_isDigit(KChar ch) {
 }
 
 KBoolean Kotlin_Char_isIdentifierIgnorable(KChar ch) {
-  RuntimeAssert(false, "Kotlin_Char_isIdentifierIgnorable() is not implemented");
+  RuntimeAssert(false,
+                "Kotlin_Char_isIdentifierIgnorable() is not implemented");
   return false;
 }
 
@@ -1037,6 +1083,7 @@ KInt Kotlin_Char_getType(KChar ch) {
   return getType(ch);
 }
 
+// clang-format off
 constexpr KInt digits[] = {
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
   -1, -1, -1, -1, -1, -1, -1,
@@ -1048,11 +1095,11 @@ constexpr KInt digits[] = {
   20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
   30, 31, 32, 33, 34, 35
 };
+// clang-format on
 
 // Based on Apache Harmony implementation.
 // Radix check is performed on the Kotlin side.
 KInt Kotlin_Char_digitOfChecked(KChar ch, KInt radix) {
-
   KInt result = -1;
   if (ch >= 0x30 /* 0 */ && ch <= 0x7a /* z */) {
     result = digits[ch - 0x30];
@@ -1063,7 +1110,8 @@ KInt Kotlin_Char_digitOfChecked(KChar ch, KInt radix) {
       result = ch - digitValues[index * 2 + 1];
     }
   }
-  if (result >= radix) return -1;
+  if (result >= radix)
+    return -1;
   return result;
 }
 
@@ -1077,7 +1125,8 @@ KInt Kotlin_String_indexOfChar(KString thiz, KChar ch, KInt fromIndex) {
   KInt count = thiz->count_;
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, fromIndex);
   while (fromIndex < count) {
-    if (*thizRaw++ == ch) return fromIndex;
+    if (*thizRaw++ == ch)
+      return fromIndex;
     fromIndex++;
   }
   return -1;
@@ -1094,7 +1143,8 @@ KInt Kotlin_String_lastIndexOfChar(KString thiz, KChar ch, KInt fromIndex) {
   KInt index = fromIndex;
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, index);
   while (index >= 0) {
-    if (*thizRaw-- == ch) return index;
+    if (*thizRaw-- == ch)
+      return index;
     index--;
   }
   return -1;
@@ -1118,15 +1168,19 @@ KInt Kotlin_String_indexOfString(KString thiz, KString other, KInt fromIndex) {
   KInt count = thiz->count_;
   const KChar* thizRaw = CharArrayAddressOfElementAt(thiz, fromIndex);
   const KChar* otherRaw = CharArrayAddressOfElementAt(other, 0);
-  void* result = konan::memmem(thizRaw, (thiz->count_ - fromIndex) * sizeof(KChar),
-                               otherRaw, other->count_ * sizeof(KChar));
-  if (result == nullptr) return -1;
+  void* result =
+      konan::memmem(thizRaw, (thiz->count_ - fromIndex) * sizeof(KChar),
+                    otherRaw, other->count_ * sizeof(KChar));
+  if (result == nullptr)
+    return -1;
 
-  return (reinterpret_cast<intptr_t>(result) - reinterpret_cast<intptr_t>(
-      CharArrayAddressOfElementAt(thiz, 0))) / sizeof(KChar);
+  return (reinterpret_cast<intptr_t>(result) -
+          reinterpret_cast<intptr_t>(CharArrayAddressOfElementAt(thiz, 0))) /
+         sizeof(KChar);
 }
 
-KInt Kotlin_String_lastIndexOfString(KString thiz, KString other, KInt fromIndex) {
+KInt Kotlin_String_lastIndexOfString(KString thiz, KString other,
+                                     KInt fromIndex) {
   KInt count = thiz->count_;
   KInt otherCount = other->count_;
 
@@ -1143,12 +1197,14 @@ KInt Kotlin_String_lastIndexOfString(KString thiz, KString other, KInt fromIndex
   KChar firstChar = *CharArrayAddressOfElementAt(other, 0);
   while (true) {
     KInt candidate = Kotlin_String_lastIndexOfChar(thiz, firstChar, start);
-    if (candidate == -1) return -1;
+    if (candidate == -1)
+      return -1;
     KInt offsetThiz = candidate;
     KInt offsetOther = 0;
     while (++offsetOther < otherCount &&
            *CharArrayAddressOfElementAt(thiz, ++offsetThiz) ==
-           *CharArrayAddressOfElementAt(other, offsetOther)) {}
+               *CharArrayAddressOfElementAt(other, offsetOther)) {
+    }
     if (offsetOther == otherCount) {
       return candidate;
     }
@@ -1160,8 +1216,8 @@ KInt Kotlin_String_hashCode(KString thiz) {
   // TODO: consider caching strings hashes.
   // TODO: maybe use some simpler hashing algorithm?
   // Note that we don't use Java's string hash.
-  return CityHash64(
-    CharArrayAddressOfElementAt(thiz, 0), thiz->count_ * sizeof(KChar));
+  return CityHash64(CharArrayAddressOfElementAt(thiz, 0),
+                    thiz->count_ * sizeof(KChar));
 }
 
 const KChar* Kotlin_String_utf16pointer(KString message) {
@@ -1175,5 +1231,4 @@ KInt Kotlin_String_utf16length(KString message) {
   return message->count_ * sizeof(KChar);
 }
 
-
-} // extern "C"
+}  // extern "C"

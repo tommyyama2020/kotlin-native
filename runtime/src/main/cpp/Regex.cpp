@@ -1,9 +1,11 @@
 #include <cstring>
-#include "Types.h"
 #include "KString.h"
 #include "Natives.h"
+#include "Types.h"
 
 namespace {
+// TODO: Format this code.
+// clang-format off
 /* Contains canonical classes (see http://www.unicode.org/Public/4.0-Update/UnicodeData-4.0.0.txt). */
 constexpr KInt canonicalClassesKeys[] = {
   768, 769, 770, 771, 772, 773, 774, 775, 776, 777, 778, 779, 780, 781, 782, 783, 784, 785, 786, 787, 788, 789, 790,
@@ -539,9 +541,11 @@ constexpr Decomposition decompositionValues[] = {
   {{19704}, 1}, {{172293}, 1}, {{172558}, 1}, {{172689}, 1}, {{40635}, 1}, {{19798}, 1}, {{40697}, 1}, {{40702}, 1},
   {{40709}, 1}, {{40719}, 1}, {{40726}, 1}, {{40763}, 1}, {{173568}, 1}
 };
+// clang-format on
 
 KInt getCanonicalClass(KInt ch) {
-  int index = binarySearchRange(canonicalClassesKeys, ARRAY_SIZE(canonicalClassesKeys), ch);
+  int index = binarySearchRange(canonicalClassesKeys,
+                                ARRAY_SIZE(canonicalClassesKeys), ch);
   if (canonicalClassesKeys[index] != ch) {
     return 0;
   }
@@ -549,14 +553,15 @@ KInt getCanonicalClass(KInt ch) {
 }
 
 const Decomposition* getDecomposition(KInt codePoint) {
-  int index = binarySearchRange(decompositionKeys, ARRAY_SIZE(decompositionKeys), codePoint);
+  int index = binarySearchRange(decompositionKeys,
+                                ARRAY_SIZE(decompositionKeys), codePoint);
   if (decompositionKeys[index] != codePoint) {
     return nullptr;
   }
   return &decompositionValues[index];
 }
 
-} // namespace
+}  // namespace
 
 extern "C" {
 
@@ -565,7 +570,8 @@ KInt Kotlin_text_regex_getCanonicalClassInternal(KInt ch) {
 }
 
 KBoolean Kotlin_text_regex_hasSingleCodepointDecompositionInternal(KInt ch) {
-  int index = binarySearchRange(singleDecompositions, ARRAY_SIZE(singleDecompositions), ch);
+  int index = binarySearchRange(singleDecompositions,
+                                ARRAY_SIZE(singleDecompositions), ch);
   return singleDecompositions[index] == ch;
 }
 
@@ -574,7 +580,9 @@ OBJ_GETTER(Kotlin_text_regex_getDecompositionInternal, KInt ch) {
   if (decomposition == nullptr) {
     return nullptr;
   }
-  ArrayHeader* result = AllocArrayInstance(theIntArrayTypeInfo, decomposition->length, OBJ_RESULT)->array();
+  ArrayHeader* result =
+      AllocArrayInstance(theIntArrayTypeInfo, decomposition->length, OBJ_RESULT)
+          ->array();
   KInt* resultRaw = IntArrayAddressOfElementAt(result, 0);
   for (int i = 0; i < decomposition->length; i++) {
     *resultRaw++ = decomposition->array[i];
@@ -582,9 +590,13 @@ OBJ_GETTER(Kotlin_text_regex_getDecompositionInternal, KInt ch) {
   RETURN_OBJ(result->obj());
 }
 
-KInt Kotlin_text_regex_decomposeString(ArrayHeader* inputCodePoints, KInt inputLength, ArrayHeader* outputCodePoints) {
-  RuntimeAssert(inputCodePoints->type_info() == theIntArrayTypeInfo, "Must use an Int array");
-  RuntimeAssert(outputCodePoints->type_info() == theIntArrayTypeInfo, "Must use an Int array");
+KInt Kotlin_text_regex_decomposeString(ArrayHeader* inputCodePoints,
+                                       KInt inputLength,
+                                       ArrayHeader* outputCodePoints) {
+  RuntimeAssert(inputCodePoints->type_info() == theIntArrayTypeInfo,
+                "Must use an Int array");
+  RuntimeAssert(outputCodePoints->type_info() == theIntArrayTypeInfo,
+                "Must use an Int array");
   RuntimeAssert(inputLength >= 0, "Input length must be >= 0");
   if (inputLength == 0) {
     return 0;
@@ -598,25 +610,31 @@ KInt Kotlin_text_regex_decomposeString(ArrayHeader* inputCodePoints, KInt inputL
     if (decomposition == nullptr) {
       outputArray[outputLength++] = inputArray[i];
     } else {
-      memcpy(outputArray + outputLength, decomposition->array, decomposition->length * sizeof(KInt));
-      outputLength+=decomposition->length;
+      memcpy(outputArray + outputLength, decomposition->array,
+             decomposition->length * sizeof(KInt));
+      outputLength += decomposition->length;
     }
   }
   return outputLength;
 }
 
-KInt Kotlin_text_regex_decomposeCodePoint(KInt codePoint, ArrayHeader* outputCodePoints, KInt fromIndex) {
-  RuntimeAssert(outputCodePoints->type_info() == theIntArrayTypeInfo, "Must be an Int array");
-  RuntimeAssert(fromIndex >= 0 && fromIndex < outputCodePoints->count_, "Start index must be >= 0 and < array size");
+KInt Kotlin_text_regex_decomposeCodePoint(KInt codePoint,
+                                          ArrayHeader* outputCodePoints,
+                                          KInt fromIndex) {
+  RuntimeAssert(outputCodePoints->type_info() == theIntArrayTypeInfo,
+                "Must be an Int array");
+  RuntimeAssert(fromIndex >= 0 && fromIndex < outputCodePoints->count_,
+                "Start index must be >= 0 and < array size");
   KInt* rawResult = IntArrayAddressOfElementAt(outputCodePoints, fromIndex);
   const Decomposition* decomposition = getDecomposition(codePoint);
   if (decomposition == nullptr) {
     *rawResult = codePoint;
     return 1;
   } else {
-    memcpy(rawResult, decomposition->array, decomposition->length * sizeof(KInt));
+    memcpy(rawResult, decomposition->array,
+           decomposition->length * sizeof(KInt));
     return decomposition->length;
   }
 }
 
-} // extern "C"
+}  // extern "C"
