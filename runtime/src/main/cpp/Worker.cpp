@@ -605,17 +605,13 @@ void executeAfter(KInt id, KRef job, KLong afterMicroseconds) {
     ThrowWorkerInvalidState();
 }
 
-KBoolean processQueue(KInt id) {
-  return theState()->processQueueUnlocked(id);
-}
+KBoolean processQueue(KInt id) { return theState()->processQueueUnlocked(id); }
 
 KBoolean park(KInt id, KLong timeoutMicroseconds, KBoolean process) {
   return theState()->parkUnlocked(id, timeoutMicroseconds, process);
 }
 
-KInt stateOfFuture(KInt id) {
-  return theState()->stateOfFutureUnlocked(id);
-}
+KInt stateOfFuture(KInt id) { return theState()->stateOfFutureUnlocked(id); }
 
 OBJ_GETTER(consumeFuture, KInt id) {
   RETURN_RESULT_OF(theState()->consumeFutureUnlocked, id);
@@ -637,9 +633,7 @@ KBoolean waitForAnyFuture(KInt version, KInt millis) {
   return theState()->waitForAnyFuture(version, millis);
 }
 
-KInt versionToken() {
-  return theState()->versionToken();
-}
+KInt versionToken() { return theState()->versionToken(); }
 
 OBJ_GETTER(attachObjectGraphInternal, KNativePtr stable) {
   RETURN_RESULT_OF(AdoptStablePointer, stable);
@@ -661,9 +655,7 @@ KInt startWorker(KBoolean errorReporting, KRef customName) {
   ThrowWorkerUnsupported();
 }
 
-KInt stateOfFuture(KInt id) {
-  ThrowWorkerUnsupported();
-}
+KInt stateOfFuture(KInt id) { ThrowWorkerUnsupported(); }
 
 KInt execute(KInt id, KInt transferMode, KRef producer,
              KNativePtr jobFunction) {
@@ -674,25 +666,17 @@ void executeAfter(KInt id, KRef job, KLong afterMicroseconds) {
   ThrowWorkerUnsupported();
 }
 
-KBoolean processQueue(KInt id) {
-  ThrowWorkerUnsupported();
-}
+KBoolean processQueue(KInt id) { ThrowWorkerUnsupported(); }
 
 KBoolean park(KInt id, KLong timeoutMicroseconds, KBoolean process) {
   ThrowWorkerUnsupported();
 }
 
-KInt currentWorker() {
-  ThrowWorkerUnsupported();
-}
+KInt currentWorker() { ThrowWorkerUnsupported(); }
 
-OBJ_GETTER(consumeFuture, KInt id) {
-  ThrowWorkerUnsupported();
-}
+OBJ_GETTER(consumeFuture, KInt id) { ThrowWorkerUnsupported(); }
 
-OBJ_GETTER(getWorkerName, KInt id) {
-  ThrowWorkerUnsupported();
-}
+OBJ_GETTER(getWorkerName, KInt id) { ThrowWorkerUnsupported(); }
 
 KInt requestTermination(KInt id, KBoolean processScheduledJobs) {
   ThrowWorkerUnsupported();
@@ -702,9 +686,7 @@ KBoolean waitForAnyFuture(KInt versionToken, KInt millis) {
   ThrowWorkerUnsupported();
 }
 
-KInt versionToken() {
-  ThrowWorkerUnsupported();
-}
+KInt versionToken() { ThrowWorkerUnsupported(); }
 
 OBJ_GETTER(attachObjectGraphInternal, KNativePtr stable) {
   ThrowWorkerUnsupported();
@@ -1021,9 +1003,7 @@ KInt Kotlin_Worker_startInternal(KBoolean noErrorReporting, KRef customName) {
   return startWorker(noErrorReporting, customName);
 }
 
-KInt Kotlin_Worker_currentInternal() {
-  return currentWorker();
-}
+KInt Kotlin_Worker_currentInternal() { return currentWorker(); }
 
 KInt Kotlin_Worker_requestTerminationWorkerInternal(
     KInt id, KBoolean processScheduledJobs) {
@@ -1053,9 +1033,7 @@ OBJ_GETTER(Kotlin_Worker_getNameInternal, KInt id) {
   RETURN_RESULT_OF(getWorkerName, id);
 }
 
-KInt Kotlin_Worker_stateOfFuture(KInt id) {
-  return stateOfFuture(id);
-}
+KInt Kotlin_Worker_stateOfFuture(KInt id) { return stateOfFuture(id); }
 
 OBJ_GETTER(Kotlin_Worker_consumeFuture, KInt id) {
   RETURN_RESULT_OF(consumeFuture, id);
@@ -1065,9 +1043,7 @@ KBoolean Kotlin_Worker_waitForAnyFuture(KInt versionToken, KInt millis) {
   return waitForAnyFuture(versionToken, millis);
 }
 
-KInt Kotlin_Worker_versionToken() {
-  return versionToken();
-}
+KInt Kotlin_Worker_versionToken() { return versionToken(); }
 
 OBJ_GETTER(Kotlin_Worker_attachObjectGraphInternal, KNativePtr stable) {
   RETURN_RESULT_OF(attachObjectGraphInternal, stable);
@@ -1087,8 +1063,6 @@ KBoolean Kotlin_Worker_isFrozenInternal(KRef object) {
   return object == nullptr || isPermanentOrFrozen(object);
 }
 
-void Kotlin_Worker_ensureNeverFrozen(KRef object) {
-  EnsureNeverFrozen(object);
-}
+void Kotlin_Worker_ensureNeverFrozen(KRef object) { EnsureNeverFrozen(object); }
 
 }  // extern "C"

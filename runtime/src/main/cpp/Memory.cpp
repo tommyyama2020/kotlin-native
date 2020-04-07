@@ -1756,9 +1756,7 @@ void rememberNewContainer(ContainerHeader* container) {
   }
 }
 
-void garbageCollect() {
-  garbageCollect(memoryState, true);
-}
+void garbageCollect() { garbageCollect(memoryState, true); }
 
 #endif  // USE_GC
 
@@ -1934,9 +1932,7 @@ MemoryState* suspendMemory() {
   return result;
 }
 
-void resumeMemory(MemoryState* state) {
-  ::memoryState = state;
-}
+void resumeMemory(MemoryState* state) { ::memoryState = state; }
 
 void makeShareable(ContainerHeader* container) {
   if (!container->frozen())
@@ -2809,9 +2805,7 @@ void ArrayContainer::Init(MemoryState* state, const TypeInfo* typeInfo,
 
 // TODO: store arena containers in some reuseable data structure, similar to
 // finalizer queue.
-void ArenaContainer::Init() {
-  allocContainer(1024);
-}
+void ArenaContainer::Init() { allocContainer(1024); }
 
 void ArenaContainer::Deinit() {
   MEMORY_LOG("Arena::Deinit start: %p\n", this)
@@ -2908,9 +2902,7 @@ ArrayHeader* ArenaContainer::PlaceArray(const TypeInfo* type_info,
 extern "C" {
 
 // Private memory interface.
-bool TryAddHeapRef(const ObjHeader* object) {
-  return tryAddHeapRef(object);
-}
+bool TryAddHeapRef(const ObjHeader* object) { return tryAddHeapRef(object); }
 
 void ReleaseHeapRefStrict(const ObjHeader* object) {
   releaseHeapRef<true>(const_cast<ObjHeader*>(object));
@@ -2948,21 +2940,13 @@ void AdoptReferenceFromSharedVariable(ObjHeader* object) {
 }
 
 // Public memory interface.
-MemoryState* InitMemory() {
-  return initMemory();
-}
+MemoryState* InitMemory() { return initMemory(); }
 
-void DeinitMemory(MemoryState* memoryState) {
-  deinitMemory(memoryState);
-}
+void DeinitMemory(MemoryState* memoryState) { deinitMemory(memoryState); }
 
-MemoryState* SuspendMemory() {
-  return suspendMemory();
-}
+MemoryState* SuspendMemory() { return suspendMemory(); }
 
-void ResumeMemory(MemoryState* state) {
-  resumeMemory(state);
-}
+void ResumeMemory(MemoryState* state) { resumeMemory(state); }
 
 OBJ_GETTER(AllocInstanceStrict, const TypeInfo* type_info) {
   RETURN_RESULT_OF(allocInstance<true>, type_info);
@@ -3016,13 +3000,9 @@ void SetHeapRefRelaxed(ObjHeader** location, const ObjHeader* object) {
   setHeapRef<false>(location, object);
 }
 
-void ZeroHeapRef(ObjHeader** location) {
-  zeroHeapRef(location);
-}
+void ZeroHeapRef(ObjHeader** location) { zeroHeapRef(location); }
 
-void ZeroStackRefStrict(ObjHeader** location) {
-  zeroStackRef<true>(location);
-}
+void ZeroStackRefStrict(ObjHeader** location) { zeroStackRef<true>(location); }
 void ZeroStackRefRelaxed(ObjHeader** location) {
   zeroStackRef<false>(location);
 }
@@ -3167,13 +3147,9 @@ KBoolean Kotlin_native_internal_GC_getTuneThreshold(KRef) {
 #endif
 }
 
-KNativePtr CreateStablePointer(KRef any) {
-  return createStablePointer(any);
-}
+KNativePtr CreateStablePointer(KRef any) { return createStablePointer(any); }
 
-void DisposeStablePointer(KNativePtr pointer) {
-  disposeStablePointer(pointer);
-}
+void DisposeStablePointer(KNativePtr pointer) { disposeStablePointer(pointer); }
 
 OBJ_GETTER(DerefStablePointer, KNativePtr pointer) {
   RETURN_RESULT_OF(derefStablePointer, pointer);
@@ -3187,9 +3163,7 @@ bool ClearSubgraphReferences(ObjHeader* root, bool checked) {
   return clearSubgraphReferences(root, checked);
 }
 
-void FreezeSubgraph(ObjHeader* root) {
-  freezeSubgraph(root);
-}
+void FreezeSubgraph(ObjHeader* root) { freezeSubgraph(root); }
 
 // This function is called from field mutators to check if object's header is
 // frozen. If object is frozen or permanent, an exception is thrown.
@@ -3199,13 +3173,9 @@ void MutationCheck(ObjHeader* obj) {
     ThrowInvalidMutabilityException(obj);
 }
 
-void EnsureNeverFrozen(ObjHeader* object) {
-  ensureNeverFrozen(object);
-}
+void EnsureNeverFrozen(ObjHeader* object) { ensureNeverFrozen(object); }
 
-void Kotlin_Any_share(ObjHeader* obj) {
-  shareAny(obj);
-}
+void Kotlin_Any_share(ObjHeader* obj) { shareAny(obj); }
 
 void AddTLSRecord(MemoryState* memory, void** key, int size) {
   auto* tlsMap = memory->tlsMap;

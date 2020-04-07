@@ -93,13 +93,9 @@ KBoolean Kotlin_AtomicInt_compareAndSet(KRef thiz, KInt expectedValue,
   return compareAndSetImpl(thiz, expectedValue, newValue);
 }
 
-void Kotlin_AtomicInt_set(KRef thiz, KInt newValue) {
-  setImpl(thiz, newValue);
-}
+void Kotlin_AtomicInt_set(KRef thiz, KInt newValue) { setImpl(thiz, newValue); }
 
-KInt Kotlin_AtomicInt_get(KRef thiz) {
-  return getImpl<KInt>(thiz);
-}
+KInt Kotlin_AtomicInt_get(KRef thiz) { return getImpl<KInt>(thiz); }
 
 KLong Kotlin_AtomicLong_addAndGet(KRef thiz, KLong delta) {
   return addAndGetImpl(thiz, delta);
