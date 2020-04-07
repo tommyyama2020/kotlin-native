@@ -103,17 +103,37 @@ extern "C" {
 
 // region Double math.
 
-KDouble Kotlin_math_sin(KDouble x) { return sin(x); }
-KDouble Kotlin_math_cos(KDouble x) { return cos(x); }
-KDouble Kotlin_math_tan(KDouble x) { return tan(x); }
-KDouble Kotlin_math_asin(KDouble x) { return asin(x); }
-KDouble Kotlin_math_acos(KDouble x) { return acos(x); }
-KDouble Kotlin_math_atan(KDouble x) { return atan(x); }
-KDouble Kotlin_math_atan2(KDouble y, KDouble x) { return atan2(y, x); }
+KDouble Kotlin_math_sin(KDouble x) {
+  return sin(x);
+}
+KDouble Kotlin_math_cos(KDouble x) {
+  return cos(x);
+}
+KDouble Kotlin_math_tan(KDouble x) {
+  return tan(x);
+}
+KDouble Kotlin_math_asin(KDouble x) {
+  return asin(x);
+}
+KDouble Kotlin_math_acos(KDouble x) {
+  return acos(x);
+}
+KDouble Kotlin_math_atan(KDouble x) {
+  return atan(x);
+}
+KDouble Kotlin_math_atan2(KDouble y, KDouble x) {
+  return atan2(y, x);
+}
 
-KDouble Kotlin_math_sinh(KDouble x) { return sinh(x); }
-KDouble Kotlin_math_cosh(KDouble x) { return cosh(x); }
-KDouble Kotlin_math_tanh(KDouble x) { return tanh(x); }
+KDouble Kotlin_math_sinh(KDouble x) {
+  return sinh(x);
+}
+KDouble Kotlin_math_cosh(KDouble x) {
+  return cosh(x);
+}
+KDouble Kotlin_math_tanh(KDouble x) {
+  return tanh(x);
+}
 
 KDouble Kotlin_math_asinh(KDouble x) {
 #if (KONAN_NEED_ASINH_ACOSH)
@@ -131,23 +151,49 @@ KDouble Kotlin_math_acosh(KDouble x) {
 #endif
 }
 
-KDouble Kotlin_math_atanh(KDouble x) { return atanh(x); }
+KDouble Kotlin_math_atanh(KDouble x) {
+  return atanh(x);
+}
 
-KDouble Kotlin_math_hypot(KDouble x, KDouble y) { return hypot(x, y); }
-KDouble Kotlin_math_sqrt(KDouble x) { return sqrt(x); }
-KDouble Kotlin_math_exp(KDouble x) { return exp(x); }
-KDouble Kotlin_math_expm1(KDouble x) { return expm1(x); }
+KDouble Kotlin_math_hypot(KDouble x, KDouble y) {
+  return hypot(x, y);
+}
+KDouble Kotlin_math_sqrt(KDouble x) {
+  return sqrt(x);
+}
+KDouble Kotlin_math_exp(KDouble x) {
+  return exp(x);
+}
+KDouble Kotlin_math_expm1(KDouble x) {
+  return expm1(x);
+}
 
-KDouble Kotlin_math_ln(KDouble x) { return log(x); }
-KDouble Kotlin_math_log10(KDouble x) { return log10(x); }
-KDouble Kotlin_math_log2(KDouble x) { return log2(x); }
-KDouble Kotlin_math_ln1p(KDouble x) { return log1p(x); }
+KDouble Kotlin_math_ln(KDouble x) {
+  return log(x);
+}
+KDouble Kotlin_math_log10(KDouble x) {
+  return log10(x);
+}
+KDouble Kotlin_math_log2(KDouble x) {
+  return log2(x);
+}
+KDouble Kotlin_math_ln1p(KDouble x) {
+  return log1p(x);
+}
 
-KDouble Kotlin_math_ceil(KDouble x) { return ceil(x); }
-KDouble Kotlin_math_floor(KDouble x) { return floor(x); }
-KDouble Kotlin_math_round(KDouble x) { return rint(x); }
+KDouble Kotlin_math_ceil(KDouble x) {
+  return ceil(x);
+}
+KDouble Kotlin_math_floor(KDouble x) {
+  return floor(x);
+}
+KDouble Kotlin_math_round(KDouble x) {
+  return rint(x);
+}
 
-KDouble Kotlin_math_abs(KDouble x) { return fabs(x); }
+KDouble Kotlin_math_abs(KDouble x) {
+  return fabs(x);
+}
 
 // extensions
 
@@ -174,23 +220,45 @@ KDouble Kotlin_math_Double_nextTowards(KDouble thiz, KDouble to) {
   return (thiz == to) ? to : nextafter(thiz, to);
 }
 
-KBoolean Kotlin_math_Double_signBit(KDouble thiz) { return signbit(thiz) != 0; }
+KBoolean Kotlin_math_Double_signBit(KDouble thiz) {
+  return signbit(thiz) != 0;
+}
 
 // endregion
 
 // region Float math.
 
-KFloat Kotlin_math_sinf(KFloat x) { return sinf(x); }
-KFloat Kotlin_math_cosf(KFloat x) { return cosf(x); }
-KFloat Kotlin_math_tanf(KFloat x) { return tanf(x); }
-KFloat Kotlin_math_asinf(KFloat x) { return asinf(x); }
-KFloat Kotlin_math_acosf(KFloat x) { return acosf(x); }
-KFloat Kotlin_math_atanf(KFloat x) { return atanf(x); }
-KFloat Kotlin_math_atan2f(KFloat y, KFloat x) { return atan2f(y, x); }
+KFloat Kotlin_math_sinf(KFloat x) {
+  return sinf(x);
+}
+KFloat Kotlin_math_cosf(KFloat x) {
+  return cosf(x);
+}
+KFloat Kotlin_math_tanf(KFloat x) {
+  return tanf(x);
+}
+KFloat Kotlin_math_asinf(KFloat x) {
+  return asinf(x);
+}
+KFloat Kotlin_math_acosf(KFloat x) {
+  return acosf(x);
+}
+KFloat Kotlin_math_atanf(KFloat x) {
+  return atanf(x);
+}
+KFloat Kotlin_math_atan2f(KFloat y, KFloat x) {
+  return atan2f(y, x);
+}
 
-KFloat Kotlin_math_sinhf(KFloat x) { return sinhf(x); }
-KFloat Kotlin_math_coshf(KFloat x) { return coshf(x); }
-KFloat Kotlin_math_tanhf(KFloat x) { return tanhf(x); }
+KFloat Kotlin_math_sinhf(KFloat x) {
+  return sinhf(x);
+}
+KFloat Kotlin_math_coshf(KFloat x) {
+  return coshf(x);
+}
+KFloat Kotlin_math_tanhf(KFloat x) {
+  return tanhf(x);
+}
 
 KFloat Kotlin_math_asinhf(KFloat x) {
 #if (KONAN_NEED_ASINH_ACOSH)
@@ -208,23 +276,49 @@ KFloat Kotlin_math_acoshf(KFloat x) {
 #endif
 }
 
-KFloat Kotlin_math_atanhf(KFloat x) { return atanhf(x); }
+KFloat Kotlin_math_atanhf(KFloat x) {
+  return atanhf(x);
+}
 
-KFloat Kotlin_math_hypotf(KFloat x, KFloat y) { return hypotf(x, y); }
-KFloat Kotlin_math_sqrtf(KFloat x) { return sqrtf(x); }
-KFloat Kotlin_math_expf(KFloat x) { return expf(x); }
-KFloat Kotlin_math_expm1f(KFloat x) { return expm1f(x); }
+KFloat Kotlin_math_hypotf(KFloat x, KFloat y) {
+  return hypotf(x, y);
+}
+KFloat Kotlin_math_sqrtf(KFloat x) {
+  return sqrtf(x);
+}
+KFloat Kotlin_math_expf(KFloat x) {
+  return expf(x);
+}
+KFloat Kotlin_math_expm1f(KFloat x) {
+  return expm1f(x);
+}
 
-KFloat Kotlin_math_lnf(KFloat x) { return logf(x); }
-KFloat Kotlin_math_log10f(KFloat x) { return log10f(x); }
-KFloat Kotlin_math_log2f(KFloat x) { return log2f(x); }
-KFloat Kotlin_math_ln1pf(KFloat x) { return log1pf(x); }
+KFloat Kotlin_math_lnf(KFloat x) {
+  return logf(x);
+}
+KFloat Kotlin_math_log10f(KFloat x) {
+  return log10f(x);
+}
+KFloat Kotlin_math_log2f(KFloat x) {
+  return log2f(x);
+}
+KFloat Kotlin_math_ln1pf(KFloat x) {
+  return log1pf(x);
+}
 
-KFloat Kotlin_math_ceilf(KFloat x) { return ceilf(x); }
-KFloat Kotlin_math_floorf(KFloat x) { return floorf(x); }
-KFloat Kotlin_math_roundf(KFloat x) { return rintf(x); }
+KFloat Kotlin_math_ceilf(KFloat x) {
+  return ceilf(x);
+}
+KFloat Kotlin_math_floorf(KFloat x) {
+  return floorf(x);
+}
+KFloat Kotlin_math_roundf(KFloat x) {
+  return rintf(x);
+}
 
-KFloat Kotlin_math_absf(KFloat x) { return fabsf(x); }
+KFloat Kotlin_math_absf(KFloat x) {
+  return fabsf(x);
+}
 
 // extensions
 
@@ -251,14 +345,20 @@ KFloat Kotlin_math_Float_nextTowards(KFloat thiz, KFloat to) {
   return (thiz == to) ? to : nextafterf(thiz, to);
 }
 
-KBoolean Kotlin_math_Float_signBit(KFloat thiz) { return signbit(thiz) != 0; }
+KBoolean Kotlin_math_Float_signBit(KFloat thiz) {
+  return signbit(thiz) != 0;
+}
 
 // endregion
 
 // region Integer math.
 
-KInt Kotlin_math_absi(KInt x) { return labs(x); }
-KLong Kotlin_math_absl(KLong x) { return llabs(x); }
+KInt Kotlin_math_absi(KInt x) {
+  return labs(x);
+}
+KLong Kotlin_math_absl(KLong x) {
+  return llabs(x);
+}
 
 // endregion
 
@@ -429,34 +529,80 @@ KDouble Kotlin_math_Double_withSign(KDouble thiz, KDouble sign) {
 
 // region Float math.
 
-KFloat Kotlin_math_sinf(KFloat x) { return (KFloat)Kotlin_math_sin(x); }
-KFloat Kotlin_math_cosf(KFloat x) { return (KFloat)Kotlin_math_cos(x); }
-KFloat Kotlin_math_tanf(KFloat x) { return (KFloat)Kotlin_math_tan(x); }
-KFloat Kotlin_math_asinf(KFloat x) { return (KFloat)Kotlin_math_asin(x); }
-KFloat Kotlin_math_acosf(KFloat x) { return (KFloat)Kotlin_math_acos(x); }
-KFloat Kotlin_math_atanf(KFloat x) { return (KFloat)Kotlin_math_atan(x); }
+KFloat Kotlin_math_sinf(KFloat x) {
+  return (KFloat)Kotlin_math_sin(x);
+}
+KFloat Kotlin_math_cosf(KFloat x) {
+  return (KFloat)Kotlin_math_cos(x);
+}
+KFloat Kotlin_math_tanf(KFloat x) {
+  return (KFloat)Kotlin_math_tan(x);
+}
+KFloat Kotlin_math_asinf(KFloat x) {
+  return (KFloat)Kotlin_math_asin(x);
+}
+KFloat Kotlin_math_acosf(KFloat x) {
+  return (KFloat)Kotlin_math_acos(x);
+}
+KFloat Kotlin_math_atanf(KFloat x) {
+  return (KFloat)Kotlin_math_atan(x);
+}
 
-KFloat Kotlin_math_sinhf(KFloat x) { return (KFloat)Kotlin_math_sinh(x); }
-KFloat Kotlin_math_coshf(KFloat x) { return (KFloat)Kotlin_math_cosh(x); }
-KFloat Kotlin_math_tanhf(KFloat x) { return (KFloat)Kotlin_math_tanh(x); }
-KFloat Kotlin_math_asinhf(KFloat x) { return (KFloat)Kotlin_math_asinh(x); }
-KFloat Kotlin_math_acoshf(KFloat x) { return (KFloat)Kotlin_math_acosh(x); }
-KFloat Kotlin_math_atanhf(KFloat x) { return (KFloat)Kotlin_math_atanh(x); }
+KFloat Kotlin_math_sinhf(KFloat x) {
+  return (KFloat)Kotlin_math_sinh(x);
+}
+KFloat Kotlin_math_coshf(KFloat x) {
+  return (KFloat)Kotlin_math_cosh(x);
+}
+KFloat Kotlin_math_tanhf(KFloat x) {
+  return (KFloat)Kotlin_math_tanh(x);
+}
+KFloat Kotlin_math_asinhf(KFloat x) {
+  return (KFloat)Kotlin_math_asinh(x);
+}
+KFloat Kotlin_math_acoshf(KFloat x) {
+  return (KFloat)Kotlin_math_acosh(x);
+}
+KFloat Kotlin_math_atanhf(KFloat x) {
+  return (KFloat)Kotlin_math_atanh(x);
+}
 
-KFloat Kotlin_math_sqrtf(KFloat x) { return (KFloat)Kotlin_math_sqrt(x); }
-KFloat Kotlin_math_expf(KFloat x) { return (KFloat)Kotlin_math_exp(x); }
-KFloat Kotlin_math_expm1f(KFloat x) { return (KFloat)Kotlin_math_expm1(x); }
+KFloat Kotlin_math_sqrtf(KFloat x) {
+  return (KFloat)Kotlin_math_sqrt(x);
+}
+KFloat Kotlin_math_expf(KFloat x) {
+  return (KFloat)Kotlin_math_exp(x);
+}
+KFloat Kotlin_math_expm1f(KFloat x) {
+  return (KFloat)Kotlin_math_expm1(x);
+}
 
-KFloat Kotlin_math_lnf(KFloat x) { return (KFloat)Kotlin_math_ln(x); }
-KFloat Kotlin_math_log10f(KFloat x) { return (KFloat)Kotlin_math_log10(x); }
-KFloat Kotlin_math_log2f(KFloat x) { return (KFloat)Kotlin_math_log2(x); }
-KFloat Kotlin_math_ln1pf(KFloat x) { return (KFloat)Kotlin_math_ln1p(x); }
+KFloat Kotlin_math_lnf(KFloat x) {
+  return (KFloat)Kotlin_math_ln(x);
+}
+KFloat Kotlin_math_log10f(KFloat x) {
+  return (KFloat)Kotlin_math_log10(x);
+}
+KFloat Kotlin_math_log2f(KFloat x) {
+  return (KFloat)Kotlin_math_log2(x);
+}
+KFloat Kotlin_math_ln1pf(KFloat x) {
+  return (KFloat)Kotlin_math_ln1p(x);
+}
 
-KFloat Kotlin_math_ceilf(KFloat x) { return (KFloat)Kotlin_math_ceil(x); }
-KFloat Kotlin_math_floorf(KFloat x) { return (KFloat)Kotlin_math_floor(x); }
-KFloat Kotlin_math_roundf(KFloat x) { return (KFloat)Kotlin_math_round(x); }
+KFloat Kotlin_math_ceilf(KFloat x) {
+  return (KFloat)Kotlin_math_ceil(x);
+}
+KFloat Kotlin_math_floorf(KFloat x) {
+  return (KFloat)Kotlin_math_floor(x);
+}
+KFloat Kotlin_math_roundf(KFloat x) {
+  return (KFloat)Kotlin_math_round(x);
+}
 
-KFloat Kotlin_math_absf(KFloat x) { return (KFloat)Kotlin_math_abs(x); }
+KFloat Kotlin_math_absf(KFloat x) {
+  return (KFloat)Kotlin_math_abs(x);
+}
 
 KFloat Kotlin_math_atan2f(KFloat y, KFloat x) {
   return (KFloat)Kotlin_math_atan2(y, x);
@@ -521,8 +667,12 @@ KBoolean Kotlin_math_Float_signBit(KFloat thiz) {
 
 // region Integer math
 
-KInt Kotlin_math_absi(KInt x) { return (x >= 0) ? x : -x; }
-KLong Kotlin_math_absl(KLong x) { return (x >= 0) ? x : -x; }
+KInt Kotlin_math_absi(KInt x) {
+  return (x >= 0) ? x : -x;
+}
+KLong Kotlin_math_absl(KLong x) {
+  return (x >= 0) ? x : -x;
+}
 
 #endif  // #ifndef KONAN_WASM
 
@@ -531,44 +681,98 @@ KLong Kotlin_math_absl(KLong x) { return (x >= 0) ? x : -x; }
 
 namespace {
 
-RUNTIME_NORETURN void NotImplemented() { ThrowNotImplementedError(); }
+RUNTIME_NORETURN void NotImplemented() {
+  ThrowNotImplementedError();
+}
 
 }  // namespace
 
-KDouble Kotlin_math_sin(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_cos(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_tan(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_asin(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_acos(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_atan(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_atan2(KDouble y, KDouble x) { NotImplemented(); }
+KDouble Kotlin_math_sin(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_cos(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_tan(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_asin(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_acos(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_atan(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_atan2(KDouble y, KDouble x) {
+  NotImplemented();
+}
 
-KDouble Kotlin_math_sinh(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_cosh(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_tanh(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_asinh(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_acosh(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_atanh(KDouble x) { NotImplemented(); }
+KDouble Kotlin_math_sinh(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_cosh(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_tanh(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_asinh(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_acosh(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_atanh(KDouble x) {
+  NotImplemented();
+}
 
-KDouble Kotlin_math_hypot(KDouble x, KDouble y) { NotImplemented(); }
-KDouble Kotlin_math_sqrt(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_exp(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_expm1(KDouble x) { NotImplemented(); }
+KDouble Kotlin_math_hypot(KDouble x, KDouble y) {
+  NotImplemented();
+}
+KDouble Kotlin_math_sqrt(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_exp(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_expm1(KDouble x) {
+  NotImplemented();
+}
 
-KDouble Kotlin_math_ln(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_log10(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_log2(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_ln1p(KDouble x) { NotImplemented(); }
+KDouble Kotlin_math_ln(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_log10(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_log2(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_ln1p(KDouble x) {
+  NotImplemented();
+}
 
-KDouble Kotlin_math_ceil(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_floor(KDouble x) { NotImplemented(); }
-KDouble Kotlin_math_round(KDouble x) { NotImplemented(); }
+KDouble Kotlin_math_ceil(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_floor(KDouble x) {
+  NotImplemented();
+}
+KDouble Kotlin_math_round(KDouble x) {
+  NotImplemented();
+}
 
-KDouble Kotlin_math_abs(KDouble x) { NotImplemented(); }
+KDouble Kotlin_math_abs(KDouble x) {
+  NotImplemented();
+}
 
 // extensions
 
-KDouble Kotlin_math_Double_pow(KDouble thiz, KDouble x) { NotImplemented(); }
+KDouble Kotlin_math_Double_pow(KDouble thiz, KDouble x) {
+  NotImplemented();
+}
 KDouble Kotlin_math_Double_IEEErem(KDouble thiz, KDouble divisor) {
   NotImplemented();
 }
@@ -576,52 +780,110 @@ KDouble Kotlin_math_Double_withSign(KDouble thiz, KDouble sign) {
   NotImplemented();
 }
 
-KDouble Kotlin_math_Double_nextUp(KDouble thiz) { NotImplemented(); }
-KDouble Kotlin_math_Double_nextDown(KDouble thiz) { NotImplemented(); }
+KDouble Kotlin_math_Double_nextUp(KDouble thiz) {
+  NotImplemented();
+}
+KDouble Kotlin_math_Double_nextDown(KDouble thiz) {
+  NotImplemented();
+}
 KDouble Kotlin_math_Double_nextTowards(KDouble thiz, KDouble to) {
   NotImplemented();
 }
 
-KBoolean Kotlin_math_Double_signBit(KDouble thiz) { NotImplemented(); }
+KBoolean Kotlin_math_Double_signBit(KDouble thiz) {
+  NotImplemented();
+}
 
 // endregion
 
 // region Float math.
 
-KFloat Kotlin_math_sinf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_cosf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_tanf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_asinf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_acosf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_atanf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_atan2f(KFloat y, KFloat x) { NotImplemented(); }
+KFloat Kotlin_math_sinf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_cosf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_tanf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_asinf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_acosf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_atanf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_atan2f(KFloat y, KFloat x) {
+  NotImplemented();
+}
 
-KFloat Kotlin_math_sinhf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_coshf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_tanhf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_asinhf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_acoshf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_atanhf(KFloat x) { NotImplemented(); }
+KFloat Kotlin_math_sinhf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_coshf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_tanhf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_asinhf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_acoshf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_atanhf(KFloat x) {
+  NotImplemented();
+}
 
-KFloat Kotlin_math_hypotf(KFloat x, KFloat y) { NotImplemented(); }
-KFloat Kotlin_math_sqrtf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_expf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_expm1f(KFloat x) { NotImplemented(); }
+KFloat Kotlin_math_hypotf(KFloat x, KFloat y) {
+  NotImplemented();
+}
+KFloat Kotlin_math_sqrtf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_expf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_expm1f(KFloat x) {
+  NotImplemented();
+}
 
-KFloat Kotlin_math_lnf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_log10f(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_log2f(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_ln1pf(KFloat x) { NotImplemented(); }
+KFloat Kotlin_math_lnf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_log10f(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_log2f(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_ln1pf(KFloat x) {
+  NotImplemented();
+}
 
-KFloat Kotlin_math_ceilf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_floorf(KFloat x) { NotImplemented(); }
-KFloat Kotlin_math_roundf(KFloat x) { NotImplemented(); }
+KFloat Kotlin_math_ceilf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_floorf(KFloat x) {
+  NotImplemented();
+}
+KFloat Kotlin_math_roundf(KFloat x) {
+  NotImplemented();
+}
 
-KFloat Kotlin_math_absf(KFloat x) { NotImplemented(); }
+KFloat Kotlin_math_absf(KFloat x) {
+  NotImplemented();
+}
 
 // extensions
 
-KFloat Kotlin_math_Float_pow(KFloat thiz, KFloat x) { NotImplemented(); }
+KFloat Kotlin_math_Float_pow(KFloat thiz, KFloat x) {
+  NotImplemented();
+}
 KFloat Kotlin_math_Float_IEEErem(KFloat thiz, KFloat divisor) {
   NotImplemented();
 }
@@ -629,25 +891,43 @@ KFloat Kotlin_math_Float_withSign(KFloat thiz, KFloat sign) {
   NotImplemented();
 }
 
-KFloat Kotlin_math_Float_nextUp(KFloat thiz) { NotImplemented(); }
-KFloat Kotlin_math_Float_nextDown(KFloat thiz) { NotImplemented(); }
+KFloat Kotlin_math_Float_nextUp(KFloat thiz) {
+  NotImplemented();
+}
+KFloat Kotlin_math_Float_nextDown(KFloat thiz) {
+  NotImplemented();
+}
 KFloat Kotlin_math_Float_nextTowards(KFloat thiz, KFloat to) {
   NotImplemented();
 }
 
-KBoolean Kotlin_math_Float_signBit(KFloat thiz) { NotImplemented(); }
+KBoolean Kotlin_math_Float_signBit(KFloat thiz) {
+  NotImplemented();
+}
 
 // endregion
 
 // region Integer math
 
-KInt Kotlin_math_absi(KInt x) { NotImplemented(); }
-KInt Kotlin_math_mini(KInt a, KInt b) { NotImplemented(); }
-KInt Kotlin_math_maxi(KInt a, KInt b) { NotImplemented(); }
+KInt Kotlin_math_absi(KInt x) {
+  NotImplemented();
+}
+KInt Kotlin_math_mini(KInt a, KInt b) {
+  NotImplemented();
+}
+KInt Kotlin_math_maxi(KInt a, KInt b) {
+  NotImplemented();
+}
 
-KLong Kotlin_math_absl(KLong x) { NotImplemented(); }
-KLong Kotlin_math_minl(KLong a, KLong b) { NotImplemented(); }
-KLong Kotlin_math_maxl(KLong a, KLong b) { NotImplemented(); }
+KLong Kotlin_math_absl(KLong x) {
+  NotImplemented();
+}
+KLong Kotlin_math_minl(KLong a, KLong b) {
+  NotImplemented();
+}
+KLong Kotlin_math_maxl(KLong a, KLong b) {
+  NotImplemented();
+}
 
 #endif  // #ifndef KONAN_NO_MATH
 

@@ -88,7 +88,9 @@ constexpr RuntimeState* kInvalidRuntime = nullptr;
 THREAD_LOCAL_VARIABLE RuntimeState* runtimeState = kInvalidRuntime;
 THREAD_LOCAL_VARIABLE int isMainThread = 0;
 
-inline bool isValidRuntime() { return ::runtimeState != kInvalidRuntime; }
+inline bool isValidRuntime() {
+  return ::runtimeState != kInvalidRuntime;
+}
 
 volatile int aliveRuntimesCount = 0;
 
@@ -166,7 +168,9 @@ void Kotlin_deinitRuntimeIfNeeded() {
   }
 }
 
-RuntimeState* Kotlin_createRuntime() { return initRuntime(); }
+RuntimeState* Kotlin_createRuntime() {
+  return initRuntime();
+}
 
 void Kotlin_destroyRuntime(RuntimeState* state) {
   RuntimeCheck(updateStatusIf(state, SUSPENDED, DESTROYING),
@@ -202,7 +206,9 @@ RuntimeState* Kotlin_getRuntime() {
   return ::runtimeState;
 }
 
-bool Kotlin_hasRuntime() { return isValidRuntime(); }
+bool Kotlin_hasRuntime() {
+  return isValidRuntime();
+}
 
 void CheckIsMainThread() {
   if (!isMainThread)
@@ -269,7 +275,9 @@ KInt Konan_Platform_getCpuArchitecture() {
 #endif
 }
 
-KInt Konan_Platform_getMemoryModel() { return IsStrictMemoryModel ? 0 : 1; }
+KInt Konan_Platform_getMemoryModel() {
+  return IsStrictMemoryModel ? 0 : 1;
+}
 
 KBoolean Konan_Platform_isDebugBinary() {
   return KonanNeedDebugInfo ? true : false;
@@ -281,9 +289,13 @@ void Kotlin_zeroOutTLSGlobals() {
                                 runtimeState->memoryState);
 }
 
-bool Kotlin_memoryLeakCheckerEnabled() { return g_checkLeaks; }
+bool Kotlin_memoryLeakCheckerEnabled() {
+  return g_checkLeaks;
+}
 
-KBoolean Konan_Platform_getMemoryLeakChecker() { return g_checkLeaks; }
+KBoolean Konan_Platform_getMemoryLeakChecker() {
+  return g_checkLeaks;
+}
 
 void Konan_Platform_setMemoryLeakChecker(KBoolean value) {
   g_checkLeaks = value;

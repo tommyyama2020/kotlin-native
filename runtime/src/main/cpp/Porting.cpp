@@ -191,12 +191,18 @@ void onThreadExit(void (*destructor)(void*), void* destructorParameter) {
 }
 
 // Process execution.
-void abort(void) { ::abort(); }
+void abort(void) {
+  ::abort();
+}
 
 #if KONAN_WASM || KONAN_ZEPHYR
-void exit(int32_t status) { Konan_exit(status); }
+void exit(int32_t status) {
+  Konan_exit(status);
+}
 #else
-void exit(int32_t status) { ::exit(status); }
+void exit(int32_t status) {
+  ::exit(status);
+}
 #endif
 
 // String/byte operations.
@@ -242,9 +248,13 @@ extern "C" void konan_free_impl(void*);
 #define free_impl konan_free_impl
 #endif
 
-void* calloc(size_t count, size_t size) { return calloc_impl(count, size); }
+void* calloc(size_t count, size_t size) {
+  return calloc_impl(count, size);
+}
 
-void free(void* pointer) { free_impl(pointer); }
+void free(void* pointer) {
+  free_impl(pointer);
+}
 
 #if KONAN_INTERNAL_NOW
 
@@ -263,9 +273,13 @@ uint64_t getTimeMillis() {
   return now;
 }
 
-uint64_t getTimeMicros() { return getTimeMillis() * 1000ULL; }
+uint64_t getTimeMicros() {
+  return getTimeMillis() * 1000ULL;
+}
 
-uint64_t getTimeNanos() { return getTimeMillis() * 1000000ULL; }
+uint64_t getTimeNanos() {
+  return getTimeMillis() * 1000000ULL;
+}
 
 #else
 // Time operations.
@@ -314,11 +328,15 @@ uint32_t inBytes(uint32_t pageCount) {
   return pageCount << WASM_PAGESIZE_EXPONENT;
 }
 
-uint32_t inPages(uint32_t value) { return value >> WASM_PAGESIZE_EXPONENT; }
+uint32_t inPages(uint32_t value) {
+  return value >> WASM_PAGESIZE_EXPONENT;
+}
 
 extern "C" void Konan_notify_memory_grow();
 
-uint32_t memorySize() { return __builtin_wasm_memory_size(0); }
+uint32_t memorySize() {
+  return __builtin_wasm_memory_size(0);
+}
 
 int32_t growMemory(uint32_t delta) {
   int32_t oldLength = __builtin_wasm_memory_grow(0, delta);
@@ -341,12 +359,18 @@ void* moreCore(int32_t delta) {
 }
 
 // dlmalloc() wants to know the page size.
-long getpagesize() { return WASM_PAGESIZE; }
+long getpagesize() {
+  return WASM_PAGESIZE;
+}
 
 #else
-void* moreCore(int size) { return sbrk(size); }
+void* moreCore(int size) {
+  return sbrk(size);
+}
 
-long getpagesize() { return sysconf(_SC_PAGESIZE); }
+long getpagesize() {
+  return sysconf(_SC_PAGESIZE);
+}
 #endif
 #endif
 
@@ -395,7 +419,9 @@ int _ZNSt3__212__next_primeEj(unsigned long n) {
   return prime;
 }
 
-int _ZNSt3__212__next_primeEm(int n) { return _ZNSt3__212__next_primeEj(n); }
+int _ZNSt3__212__next_primeEm(int n) {
+  return _ZNSt3__212__next_primeEj(n);
+}
 
 int _ZNSt3__112__next_primeEj(unsigned long n) {
   return _ZNSt3__212__next_primeEj(n);
@@ -414,7 +440,9 @@ int* __errno_location() {
 
 // Some math.h functions.
 
-double pow(double x, double y) { return __builtin_pow(x, y); }
+double pow(double x, double y) {
+  return __builtin_pow(x, y);
+}
 #endif
 
 #ifdef KONAN_WASM

@@ -44,7 +44,9 @@ OBJ_GETTER(Kotlin_getStackTraceStrings, KConstRef stackTrace) {
 }
 
 // TODO: consider handling it with compiler magic instead.
-OBJ_GETTER0(Kotlin_native_internal_undefined) { RETURN_OBJ(nullptr); }
+OBJ_GETTER0(Kotlin_native_internal_undefined) {
+  RETURN_OBJ(nullptr);
+}
 
 void* Kotlin_interop_malloc(KLong size, KInt align) {
   if (size > SIZE_MAX) {
@@ -60,11 +62,17 @@ void* Kotlin_interop_malloc(KLong size, KInt align) {
   return result;
 }
 
-void Kotlin_interop_free(void* ptr) { konan::free(ptr); }
+void Kotlin_interop_free(void* ptr) {
+  konan::free(ptr);
+}
 
-void Kotlin_system_exitProcess(KInt status) { konan::exit(status); }
+void Kotlin_system_exitProcess(KInt status) {
+  konan::exit(status);
+}
 
-const void* Kotlin_Any_getTypeInfo(KConstRef obj) { return obj->type_info(); }
+const void* Kotlin_Any_getTypeInfo(KConstRef obj) {
+  return obj->type_info();
+}
 
 void Kotlin_CPointer_CopyMemory(KNativePtr to, KNativePtr from, KInt count) {
   memcpy(to, from, count);

@@ -46,12 +46,22 @@ KLong Kotlin_Float_toLong(KFloat a) {
   return a;
 }
 
-KByte Kotlin_Float_toByte(KFloat a) { return (KByte)Kotlin_Float_toInt(a); }
-KShort Kotlin_Float_toShort(KFloat a) { return (KShort)Kotlin_Float_toInt(a); }
+KByte Kotlin_Float_toByte(KFloat a) {
+  return (KByte)Kotlin_Float_toInt(a);
+}
+KShort Kotlin_Float_toShort(KFloat a) {
+  return (KShort)Kotlin_Float_toInt(a);
+}
 
-ALWAYS_INLINE KBoolean Kotlin_Float_isNaN(KFloat a) { return isnan(a); }
-ALWAYS_INLINE KBoolean Kotlin_Float_isInfinite(KFloat a) { return isinf(a); }
-ALWAYS_INLINE KBoolean Kotlin_Float_isFinite(KFloat a) { return isfinite(a); }
+ALWAYS_INLINE KBoolean Kotlin_Float_isNaN(KFloat a) {
+  return isnan(a);
+}
+ALWAYS_INLINE KBoolean Kotlin_Float_isInfinite(KFloat a) {
+  return isinf(a);
+}
+ALWAYS_INLINE KBoolean Kotlin_Float_isFinite(KFloat a) {
+  return isfinite(a);
+}
 
 //--- Double -----------------------------------------------------------------//
 
@@ -75,9 +85,15 @@ KLong Kotlin_Double_toLong(KDouble a) {
   return a;
 }
 
-ALWAYS_INLINE KBoolean Kotlin_Double_isNaN(KDouble a) { return isnan(a); }
-ALWAYS_INLINE KBoolean Kotlin_Double_isInfinite(KDouble a) { return isinf(a); }
-ALWAYS_INLINE KBoolean Kotlin_Double_isFinite(KDouble a) { return isfinite(a); }
+ALWAYS_INLINE KBoolean Kotlin_Double_isNaN(KDouble a) {
+  return isnan(a);
+}
+ALWAYS_INLINE KBoolean Kotlin_Double_isInfinite(KDouble a) {
+  return isinf(a);
+}
+ALWAYS_INLINE KBoolean Kotlin_Double_isFinite(KDouble a) {
+  return isfinite(a);
+}
 
 //--- Bit operations ---------------------------------------------------------//
 

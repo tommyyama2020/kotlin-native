@@ -246,15 +246,25 @@ id objc_allocWithZone(Class clazz);
 id objc_retain(id ptr);
 void objc_release(id ptr);
 
-void* Kotlin_objc_autoreleasePoolPush() { return objc_autoreleasePoolPush(); }
+void* Kotlin_objc_autoreleasePoolPush() {
+  return objc_autoreleasePoolPush();
+}
 
-void Kotlin_objc_autoreleasePoolPop(void* ptr) { objc_autoreleasePoolPop(ptr); }
+void Kotlin_objc_autoreleasePoolPop(void* ptr) {
+  objc_autoreleasePoolPop(ptr);
+}
 
-id Kotlin_objc_allocWithZone(Class clazz) { return objc_allocWithZone(clazz); }
+id Kotlin_objc_allocWithZone(Class clazz) {
+  return objc_allocWithZone(clazz);
+}
 
-id Kotlin_objc_retain(id ptr) { return objc_retain(ptr); }
+id Kotlin_objc_retain(id ptr) {
+  return objc_retain(ptr);
+}
 
-void Kotlin_objc_release(id ptr) { objc_release(ptr); }
+void Kotlin_objc_release(id ptr) {
+  objc_release(ptr);
+}
 
 Class Kotlin_objc_lookUpClass(const char* name) {
   return objc_lookUpClass(name);

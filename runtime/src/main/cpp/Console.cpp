@@ -49,7 +49,9 @@ void Kotlin_io_Console_println(KString message) {
 #endif
 }
 
-void Kotlin_io_Console_println0() { konan::consoleWriteUtf8("\n", 1); }
+void Kotlin_io_Console_println0() {
+  konan::consoleWriteUtf8("\n", 1);
+}
 
 OBJ_GETTER0(Kotlin_io_Console_readLine) {
   char data[4096];

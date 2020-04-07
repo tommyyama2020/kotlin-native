@@ -895,7 +895,9 @@ KChar Kotlin_String_get(KString thiz, KInt index) {
   return *CharArrayAddressOfElementAt(thiz, index);
 }
 
-KInt Kotlin_String_getStringLength(KString thiz) { return thiz->count_; }
+KInt Kotlin_String_getStringLength(KString thiz) {
+  return thiz->count_;
+}
 
 const char* unsafeByteArrayAsCString(KConstRef thiz, KInt start, KInt size) {
   const ArrayHeader* array = thiz->array();
@@ -1027,13 +1029,17 @@ KBoolean Kotlin_Char_isDefined(KChar ch) {
   return true;
 }
 
-KBoolean Kotlin_Char_isLetter(KChar ch) { return iswalpha_Konan(ch) != 0; }
+KBoolean Kotlin_Char_isLetter(KChar ch) {
+  return iswalpha_Konan(ch) != 0;
+}
 
 KBoolean Kotlin_Char_isLetterOrDigit(KChar ch) {
   return iswalnum_Konan(ch) != 0;
 }
 
-KBoolean Kotlin_Char_isDigit(KChar ch) { return iswdigit_Konan(ch) != 0; }
+KBoolean Kotlin_Char_isDigit(KChar ch) {
+  return iswdigit_Konan(ch) != 0;
+}
 
 KBoolean Kotlin_Char_isIdentifierIgnorable(KChar ch) {
   RuntimeAssert(false,
@@ -1053,17 +1059,29 @@ KBoolean Kotlin_Char_isLowSurrogate(KChar ch) {
   return ((ch & 0xfc00) == 0xdc00);
 }
 
-KBoolean Kotlin_Char_isWhitespace(KChar ch) { return iswspace_Konan(ch) != 0; }
+KBoolean Kotlin_Char_isWhitespace(KChar ch) {
+  return iswspace_Konan(ch) != 0;
+}
 
-KBoolean Kotlin_Char_isLowerCase(KChar ch) { return iswlower_Konan(ch) != 0; }
+KBoolean Kotlin_Char_isLowerCase(KChar ch) {
+  return iswlower_Konan(ch) != 0;
+}
 
-KBoolean Kotlin_Char_isUpperCase(KChar ch) { return iswupper_Konan(ch) != 0; }
+KBoolean Kotlin_Char_isUpperCase(KChar ch) {
+  return iswupper_Konan(ch) != 0;
+}
 
-KChar Kotlin_Char_toLowerCase(KChar ch) { return towlower_Konan(ch); }
+KChar Kotlin_Char_toLowerCase(KChar ch) {
+  return towlower_Konan(ch);
+}
 
-KChar Kotlin_Char_toUpperCase(KChar ch) { return towupper_Konan(ch); }
+KChar Kotlin_Char_toUpperCase(KChar ch) {
+  return towupper_Konan(ch);
+}
 
-KInt Kotlin_Char_getType(KChar ch) { return getType(ch); }
+KInt Kotlin_Char_getType(KChar ch) {
+  return getType(ch);
+}
 
 // clang-format off
 constexpr KInt digits[] = {

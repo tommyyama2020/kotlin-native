@@ -25,9 +25,13 @@
 
 #include "Porting.h"
 
-inline void* konanAllocMemory(size_t size) { return konan::calloc(1, size); }
+inline void* konanAllocMemory(size_t size) {
+  return konan::calloc(1, size);
+}
 
-inline void konanFreeMemory(void* memory) { konan::free(memory); }
+inline void konanFreeMemory(void* memory) {
+  konan::free(memory);
+}
 
 template <typename T>
 inline T* konanAllocArray(size_t length) {
