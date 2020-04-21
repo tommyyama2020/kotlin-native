@@ -24,39 +24,39 @@
 namespace {
 
 typedef union {
-    KLong l;
-    KDouble d;
+  KLong l;
+  KDouble d;
 } DoubleAlias;
 
 typedef union {
-    KInt i;
-    KFloat f;
+  KInt i;
+  KFloat f;
 } FloatAlias;
 
-} // namespace
+}
 
 inline KDouble bitsToDouble(KLong bits) {
-    DoubleAlias alias;
-    alias.l = bits;
-    return alias.d;
+  DoubleAlias alias;
+  alias.l = bits;
+  return alias.d;
 }
 
 inline KLong doubleToBits(KDouble value) {
-    DoubleAlias alias;
-    alias.d = value;
-    return alias.l;
+  DoubleAlias alias;
+  alias.d = value;
+  return alias.l;
 }
 
 inline KFloat bitsToFloat(KInt bits) {
-    FloatAlias alias;
-    alias.i = bits;
-    return alias.f;
+  FloatAlias alias;
+  alias.i = bits;
+  return alias.f;
 }
 
 inline KInt floatToBits(KFloat value) {
-    FloatAlias alias;
-    alias.f = value;
-    return alias.i;
+  FloatAlias alias;
+  alias.f = value;
+  return alias.i;
 }
 
 extern "C" KInt doubleUpper(KDouble value);

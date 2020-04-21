@@ -22,22 +22,21 @@ namespace {
 
 // TODO: an ugly hack with fixed layout.
 struct WeakReferenceCounter {
-    ObjHeader header;
-    KRef referred;
-    KInt lock;
-    KInt cookie;
+  ObjHeader header;
+  KRef referred;
+  KInt lock;
+  KInt cookie;
 };
 
 inline WeakReferenceCounter* asWeakReferenceCounter(ObjHeader* obj) {
-    return reinterpret_cast<WeakReferenceCounter*>(obj);
+  return reinterpret_cast<WeakReferenceCounter*>(obj);
 }
 
 #if !KONAN_NO_THREADS
 
 inline void lock(int32_t* address) {
     RuntimeAssert(*address == 0 || *address == 1, "Incorrect lock state");
-    while (__sync_val_compare_and_swap(address, 0, 1) == 1)
-        ;
+    while (__sync_val_compare_and_swap(address, 0, 1) == 1);
 }
 
 inline void unlock(int32_t* address) {
@@ -47,7 +46,7 @@ inline void unlock(int32_t* address) {
 
 #endif
 
-} // namespace
+}  // namespace
 
 extern "C" {
 
@@ -58,50 +57,50 @@ OBJ_GETTER(makePermanentWeakReferenceImpl, ObjHeader*);
 // See Weak.kt for implementation details.
 // Retrieve link on the counter object.
 OBJ_GETTER(Konan_getWeakReferenceImpl, ObjHeader* referred) {
-    if (referred->container() == nullptr) {
-        RETURN_RESULT_OF(makePermanentWeakReferenceImpl, referred);
-    }
+  if (referred->container() == nullptr) {
+    RETURN_RESULT_OF(makePermanentWeakReferenceImpl, referred);
+  }
 
-    MetaObjHeader* meta = referred->meta_object();
+  MetaObjHeader* meta = referred->meta_object();
 
 #if KONAN_OBJC_INTEROP
-    if (IsInstance(referred, theObjCObjectWrapperTypeInfo)) {
-        RETURN_RESULT_OF(makeObjCWeakReferenceImpl, meta->associatedObject_);
-    }
+  if (IsInstance(referred, theObjCObjectWrapperTypeInfo)) {
+    RETURN_RESULT_OF(makeObjCWeakReferenceImpl, meta->associatedObject_);
+  }
 #endif // KONAN_OBJC_INTEROP
 
-    if (meta->WeakReference.counter_ == nullptr) {
-        ObjHolder counterHolder;
-        // Cast unneeded, just to emphasize we store an object reference as void*.
-        ObjHeader* counter = makeWeakReferenceCounter(reinterpret_cast<void*>(referred), counterHolder.slot());
-        UpdateHeapRefIfNull(&meta->WeakReference.counter_, counter);
-    }
-    RETURN_OBJ(meta->WeakReference.counter_);
+  if (meta->WeakReference.counter_ == nullptr) {
+     ObjHolder counterHolder;
+     // Cast unneeded, just to emphasize we store an object reference as void*.
+     ObjHeader* counter = makeWeakReferenceCounter(reinterpret_cast<void*>(referred), counterHolder.slot());
+     UpdateHeapRefIfNull(&meta->WeakReference.counter_, counter);
+  }
+  RETURN_OBJ(meta->WeakReference.counter_);
 }
 
 // Materialize a weak reference to either null or the real reference.
 OBJ_GETTER(Konan_WeakReferenceCounter_get, ObjHeader* counter) {
-    ObjHeader** referredAddress = &asWeakReferenceCounter(counter)->referred;
+  ObjHeader** referredAddress = &asWeakReferenceCounter(counter)->referred;
 #if KONAN_NO_THREADS
-    RETURN_OBJ(*referredAddress);
+  RETURN_OBJ(*referredAddress);
 #else
-    auto* weakCounter = asWeakReferenceCounter(counter);
-    RETURN_RESULT_OF(ReadHeapRefLocked, referredAddress, &weakCounter->lock, &weakCounter->cookie);
+  auto* weakCounter = asWeakReferenceCounter(counter);
+  RETURN_RESULT_OF(ReadHeapRefLocked, referredAddress,  &weakCounter->lock,  &weakCounter->cookie);
 #endif
 }
 
 void WeakReferenceCounterClear(ObjHeader* counter) {
-    ObjHeader** referredAddress = &asWeakReferenceCounter(counter)->referred;
-    // Note, that we don't do UpdateRef here, as reference is weak.
+  ObjHeader** referredAddress = &asWeakReferenceCounter(counter)->referred;
+  // Note, that we don't do UpdateRef here, as reference is weak.
 #if KONAN_NO_THREADS
-    *referredAddress = nullptr;
+  *referredAddress = nullptr;
 #else
-    int32_t* lockAddress = &asWeakReferenceCounter(counter)->lock;
-    // Spinlock.
-    lock(lockAddress);
-    *referredAddress = nullptr;
-    unlock(lockAddress);
+  int32_t* lockAddress = &asWeakReferenceCounter(counter)->lock;
+  // Spinlock.
+  lock(lockAddress);
+  *referredAddress = nullptr;
+  unlock(lockAddress);
 #endif
 }
 
-} // extern "C"
+}  // extern "C"

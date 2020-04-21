@@ -39,21 +39,21 @@ void DisposeCString(char* cstring);
 
 template <typename T>
 int binarySearchRange(const T* array, int arrayLength, T needle) {
-    int bottom = 0;
-    int top = arrayLength - 1;
-    int middle = -1;
-    T value = 0;
-    while (bottom <= top) {
-        middle = (bottom + top) / 2;
-        value = array[middle];
-        if (needle > value)
-            bottom = middle + 1;
-        else if (needle == value)
-            return middle;
-        else
-            top = middle - 1;
-    }
-    return middle - (needle < value ? 1 : 0);
+  int bottom = 0;
+  int top = arrayLength - 1;
+  int middle = -1;
+  T value = 0;
+  while (bottom <= top) {
+    middle = (bottom + top) / 2;
+    value = array[middle];
+    if (needle > value)
+      bottom = middle + 1;
+    else if (needle == value)
+      return middle;
+    else
+      top = middle - 1;
+  }
+  return middle - (needle < value ? 1 : 0);
 }
 
 #endif // RUNTIME_KSTRING_H
