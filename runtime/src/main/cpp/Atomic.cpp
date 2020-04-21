@@ -31,37 +31,44 @@ struct AtomicReferenceLayout {
     KInt cookie_;
 };
 
-template <typename T> struct AtomicPrimitive {
+template <typename T>
+struct AtomicPrimitive {
     ObjHeader header;
     volatile T value_;
 };
 
-template <typename T> inline volatile T* getValueLocation(KRef thiz) {
+template <typename T>
+inline volatile T* getValueLocation(KRef thiz) {
     AtomicPrimitive<T>* atomic = reinterpret_cast<AtomicPrimitive<T>*>(thiz);
     return &atomic->value_;
 }
 
-template <typename T> void setImpl(KRef thiz, T value) {
+template <typename T>
+void setImpl(KRef thiz, T value) {
     volatile T* location = getValueLocation<T>(thiz);
     atomicSet(location, value);
 }
 
-template <typename T> T getImpl(KRef thiz) {
+template <typename T>
+T getImpl(KRef thiz) {
     volatile T* location = getValueLocation<T>(thiz);
     return atomicGet(location);
 }
 
-template <typename T> T addAndGetImpl(KRef thiz, T delta) {
+template <typename T>
+T addAndGetImpl(KRef thiz, T delta) {
     volatile T* location = getValueLocation<T>(thiz);
     return atomicAdd(location, delta);
 }
 
-template <typename T> T compareAndSwapImpl(KRef thiz, T expectedValue, T newValue) {
+template <typename T>
+T compareAndSwapImpl(KRef thiz, T expectedValue, T newValue) {
     volatile T* location = getValueLocation<T>(thiz);
     return compareAndSwap(location, expectedValue, newValue);
 }
 
-template <typename T> KBoolean compareAndSetImpl(KRef thiz, T expectedValue, T newValue) {
+template <typename T>
+KBoolean compareAndSetImpl(KRef thiz, T expectedValue, T newValue) {
     volatile T* location = getValueLocation<T>(thiz);
     return compareAndSet(location, expectedValue, newValue);
 }

@@ -36,7 +36,8 @@ ALWAYS_INLINE inline void mutabilityCheck(KConstRef thiz) {
     }
 }
 
-template <typename T> inline void fillImpl(KRef thiz, KInt fromIndex, KInt toIndex, T value) {
+template <typename T>
+inline void fillImpl(KRef thiz, KInt fromIndex, KInt toIndex, T value) {
     ArrayHeader* array = thiz->array();
     checkRangeIndexes(fromIndex, toIndex, array->count_);
     mutabilityCheck(thiz);
@@ -46,7 +47,8 @@ template <typename T> inline void fillImpl(KRef thiz, KInt fromIndex, KInt toInd
     }
 }
 
-template <typename T> inline void copyImpl(KConstRef thiz, KInt fromIndex, KRef destination, KInt toIndex, KInt count) {
+template <typename T>
+inline void copyImpl(KConstRef thiz, KInt fromIndex, KRef destination, KInt toIndex, KInt count) {
     const ArrayHeader* array = thiz->array();
     ArrayHeader* destinationArray = destination->array();
     if (count < 0 || fromIndex < 0 || static_cast<uint32_t>(count) + fromIndex > array->count_ || toIndex < 0 ||
@@ -60,7 +62,8 @@ template <typename T> inline void copyImpl(KConstRef thiz, KInt fromIndex, KRef 
 }
 
 
-template <class T> inline void PrimitiveArraySet(KRef thiz, KInt index, T value) {
+template <class T>
+inline void PrimitiveArraySet(KRef thiz, KInt index, T value) {
     ArrayHeader* array = thiz->array();
     if (static_cast<uint32_t>(index) >= array->count_) {
         ThrowArrayIndexOutOfBoundsException();
@@ -69,7 +72,8 @@ template <class T> inline void PrimitiveArraySet(KRef thiz, KInt index, T value)
     *PrimitiveArrayAddressOfElementAt<T>(array, index) = value;
 }
 
-template <class T> inline T PrimitiveArrayGet(KConstRef thiz, KInt index) {
+template <class T>
+inline T PrimitiveArrayGet(KConstRef thiz, KInt index) {
     const ArrayHeader* array = thiz->array();
     if (static_cast<uint32_t>(index) >= array->count_) {
         ThrowArrayIndexOutOfBoundsException();

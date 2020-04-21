@@ -38,7 +38,8 @@ public:
 };
 
 // TODO: use std::lock_guard instead?
-template <class Mutex> class LockGuard {
+template <class Mutex>
+class LockGuard {
 public:
     explicit LockGuard(Mutex& mutex_) : mutex(mutex_) { mutex.lock(); }
 

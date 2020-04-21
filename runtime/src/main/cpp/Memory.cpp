@@ -356,7 +356,8 @@ public:
         }
     }
 
-    template <typename func> void processEnqueuedReleaseRefsWith(func process) {
+    template <typename func>
+    void processEnqueuedReleaseRefsWith(func process) {
         if (releaseList == nullptr)
             return;
 
@@ -686,7 +687,8 @@ inline container_size_t objectSize(const ObjHeader* obj) {
     return alignUp(size, kObjectAlignment);
 }
 
-template <typename func> inline void traverseObjectFields(ObjHeader* obj, func process) {
+template <typename func>
+inline void traverseObjectFields(ObjHeader* obj, func process) {
     const TypeInfo* typeInfo = obj->type_info();
     if (typeInfo != theArrayTypeInfo) {
         for (int index = 0; index < typeInfo->objOffsetsCount_; index++) {
@@ -702,7 +704,8 @@ template <typename func> inline void traverseObjectFields(ObjHeader* obj, func p
     }
 }
 
-template <typename func> inline void traverseReferredObjects(ObjHeader* obj, func process) {
+template <typename func>
+inline void traverseReferredObjects(ObjHeader* obj, func process) {
     traverseObjectFields(obj, [process](ObjHeader** location) {
         ObjHeader* ref = *location;
         if (ref != nullptr)
@@ -710,7 +713,8 @@ template <typename func> inline void traverseReferredObjects(ObjHeader* obj, fun
     });
 }
 
-template <typename func> inline void traverseContainerObjectFields(ContainerHeader* container, func process) {
+template <typename func>
+inline void traverseContainerObjectFields(ContainerHeader* container, func process) {
     RuntimeAssert(!isAggregatingFrozenContainer(container), "Must not be called on such containers");
     ObjHeader* obj = reinterpret_cast<ObjHeader*>(container + 1);
 
@@ -720,7 +724,8 @@ template <typename func> inline void traverseContainerObjectFields(ContainerHead
     }
 }
 
-template <typename func> inline void traverseContainerReferredObjects(ContainerHeader* container, func process) {
+template <typename func>
+inline void traverseContainerReferredObjects(ContainerHeader* container, func process) {
     traverseContainerObjectFields(container, [process](ObjHeader** location) {
         ObjHeader* ref = *location;
         if (ref != nullptr)
@@ -1021,17 +1026,20 @@ void traverseStronglyConnectedComponent(
     }
 }
 
-template <bool Atomic> inline bool tryIncrementRC(ContainerHeader* container) {
+template <bool Atomic>
+inline bool tryIncrementRC(ContainerHeader* container) {
     return container->tryIncRefCount<Atomic>();
 }
 
 #if !USE_GC
 
-template <bool Atomic> inline void incrementRC(ContainerHeader* container) {
+template <bool Atomic>
+inline void incrementRC(ContainerHeader* container) {
     container->incRefCount<Atomic>();
 }
 
-template <bool Atomic, bool UseCycleCollector> inline void decrementRC(ContainerHeader* container) {
+template <bool Atomic, bool UseCycleCollector>
+inline void decrementRC(ContainerHeader* container) {
     if (container->decRefCount<Atomic>() == 0) {
         freeContainer(container);
     }
@@ -1044,17 +1052,20 @@ inline void decrementRC(ContainerHeader* container) {
         decrementRC<false, false>(container);
 }
 
-template <bool CanCollect> inline void enqueueDecrementRC(ContainerHeader* container) {
+template <bool CanCollect>
+inline void enqueueDecrementRC(ContainerHeader* container) {
     RuntimeCheck(false, "Not yet implemeneted");
 }
 
 #else // USE_GC
 
-template <bool Atomic> inline void incrementRC(ContainerHeader* container) {
+template <bool Atomic>
+inline void incrementRC(ContainerHeader* container) {
     container->incRefCount<Atomic>();
 }
 
-template <bool Atomic, bool UseCycleCollector> inline void decrementRC(ContainerHeader* container) {
+template <bool Atomic, bool UseCycleCollector>
+inline void decrementRC(ContainerHeader* container) {
     // TODO: enable me, once account for inner references in frozen objects correctly.
     // RuntimeAssert(container->refCount() > 0, "Must be positive");
     if (container->decRefCount<Atomic>() == 0) {
@@ -1112,7 +1123,8 @@ inline void decrementRC(ContainerHeader* container) {
     }
 }
 
-template <bool CanCollect> inline void enqueueDecrementRC(ContainerHeader* container) {
+template <bool CanCollect>
+inline void enqueueDecrementRC(ContainerHeader* container) {
     auto* state = memoryState;
     if (CanCollect) {
         if (state->toRelease->size() >= state->gcThreshold && state->gcSuspendCount == 0) {
@@ -1210,7 +1222,8 @@ void scanRoots(MemoryState*);
 void collectRoots(MemoryState*);
 void scan(ContainerHeader* container);
 
-template <bool useColor> void markGray(ContainerHeader* start) {
+template <bool useColor>
+void markGray(ContainerHeader* start) {
     ContainerHeaderDeque toVisit;
     toVisit.push_front(start);
 
@@ -1245,7 +1258,8 @@ template <bool useColor> void markGray(ContainerHeader* start) {
     }
 }
 
-template <bool useColor> void scanBlack(ContainerHeader* start) {
+template <bool useColor>
+void scanBlack(ContainerHeader* start) {
     ContainerHeaderDeque toVisit;
     toVisit.push_front(start);
     while (!toVisit.empty()) {
@@ -1439,7 +1453,8 @@ inline bool tryAddHeapRef(const ObjHeader* header) {
     return (container != nullptr) ? tryAddHeapRef(container) : true;
 }
 
-template <bool Strict> inline void releaseHeapRef(ContainerHeader* container) {
+template <bool Strict>
+inline void releaseHeapRef(ContainerHeader* container) {
     MEMORY_LOG("ReleaseHeapRef %p: rc=%d\n", container, container->refCount())
     UPDATE_RELEASEREF_STAT(memoryState, container, needAtomicAccess(container), canBeCyclic(container), 0)
     if (container->tag() != CONTAINER_TAG_STACK) {
@@ -1450,7 +1465,8 @@ template <bool Strict> inline void releaseHeapRef(ContainerHeader* container) {
     }
 }
 
-template <bool Strict> inline void releaseHeapRef(const ObjHeader* header) {
+template <bool Strict>
+inline void releaseHeapRef(const ObjHeader* header) {
     auto* container = header->container();
     if (container != nullptr)
         releaseHeapRef<Strict>(const_cast<ContainerHeader*>(container));
@@ -1801,7 +1817,8 @@ void makeShareable(ContainerHeader* container) {
         container->makeShared();
 }
 
-template <bool Strict> void setStackRef(ObjHeader** location, const ObjHeader* object) {
+template <bool Strict>
+void setStackRef(ObjHeader** location, const ObjHeader* object) {
     MEMORY_LOG("SetStackRef *%p: %p\n", location, object)
     UPDATE_REF_EVENT(memoryState, nullptr, object, location, 1);
     if (!Strict && object != nullptr)
@@ -1809,7 +1826,8 @@ template <bool Strict> void setStackRef(ObjHeader** location, const ObjHeader* o
     *const_cast<const ObjHeader**>(location) = object;
 }
 
-template <bool Strict> void setHeapRef(ObjHeader** location, const ObjHeader* object) {
+template <bool Strict>
+void setHeapRef(ObjHeader** location, const ObjHeader* object) {
     MEMORY_LOG("SetHeapRef *%p: %p\n", location, object)
     UPDATE_REF_EVENT(memoryState, nullptr, object, location, 0);
     if (object != nullptr)
@@ -1827,7 +1845,8 @@ void zeroHeapRef(ObjHeader** location) {
     }
 }
 
-template <bool Strict> void zeroStackRef(ObjHeader** location) {
+template <bool Strict>
+void zeroStackRef(ObjHeader** location) {
     MEMORY_LOG("ZeroStackRef %p\n", location)
     if (Strict) {
         *location = nullptr;
@@ -1839,7 +1858,8 @@ template <bool Strict> void zeroStackRef(ObjHeader** location) {
     }
 }
 
-template <bool Strict> void updateHeapRef(ObjHeader** location, const ObjHeader* object) {
+template <bool Strict>
+void updateHeapRef(ObjHeader** location, const ObjHeader* object) {
     UPDATE_REF_EVENT(memoryState, *location, object, location, 0);
     ObjHeader* old = *location;
     if (old != object) {
@@ -1853,7 +1873,8 @@ template <bool Strict> void updateHeapRef(ObjHeader** location, const ObjHeader*
     }
 }
 
-template <bool Strict> void updateStackRef(ObjHeader** location, const ObjHeader* object) {
+template <bool Strict>
+void updateStackRef(ObjHeader** location, const ObjHeader* object) {
     UPDATE_REF_EVENT(memoryState, *location, object, location, 1)
     RuntimeAssert(object != reinterpret_cast<ObjHeader*>(1), "Markers disallowed here");
     if (Strict) {
@@ -1872,7 +1893,8 @@ template <bool Strict> void updateStackRef(ObjHeader** location, const ObjHeader
     }
 }
 
-template <bool Strict> void updateReturnRef(ObjHeader** returnSlot, const ObjHeader* value) {
+template <bool Strict>
+void updateReturnRef(ObjHeader** returnSlot, const ObjHeader* value) {
     updateStackRef<Strict>(returnSlot, value);
 }
 
@@ -1905,7 +1927,8 @@ inline void checkIfGcNeeded(MemoryState* state) {
     }
 }
 
-template <bool Strict> OBJ_GETTER(allocInstance, const TypeInfo* type_info) {
+template <bool Strict>
+OBJ_GETTER(allocInstance, const TypeInfo* type_info) {
     RuntimeAssert(type_info->instanceSize_ >= 0, "must be an object");
     auto* state = memoryState;
 #if USE_GC
@@ -1928,7 +1951,8 @@ template <bool Strict> OBJ_GETTER(allocInstance, const TypeInfo* type_info) {
     RETURN_OBJ(obj);
 }
 
-template <bool Strict> OBJ_GETTER(allocArrayInstance, const TypeInfo* type_info, int32_t elements) {
+template <bool Strict>
+OBJ_GETTER(allocArrayInstance, const TypeInfo* type_info, int32_t elements) {
     RuntimeAssert(type_info->instanceSize_ < 0, "must be an array");
     if (elements < 0)
         ThrowIllegalArgumentException();
@@ -2142,7 +2166,8 @@ OBJ_GETTER(readHeapRefNoLock, ObjHeader* object, KInt index) {
     RETURN_OBJ(value);
 }
 
-template <bool Strict> void enterFrame(ObjHeader** start, int parameters, int count) {
+template <bool Strict>
+void enterFrame(ObjHeader** start, int parameters, int count) {
     MEMORY_LOG("EnterFrame %p: %d parameters %d locals\n", start, parameters, count)
     FrameOverlay* frame = reinterpret_cast<FrameOverlay*>(start);
     if (Strict) {
@@ -2154,7 +2179,8 @@ template <bool Strict> void enterFrame(ObjHeader** start, int parameters, int co
     }
 }
 
-template <bool Strict> void leaveFrame(ObjHeader** start, int parameters, int count) {
+template <bool Strict>
+void leaveFrame(ObjHeader** start, int parameters, int count) {
     MEMORY_LOG("LeaveFrame %p: %d parameters %d locals\n", start, parameters, count)
     FrameOverlay* frame = reinterpret_cast<FrameOverlay*>(start);
     if (Strict) {

@@ -476,7 +476,8 @@ static OBJ_GETTER(blockToKotlinImp, id block, SEL cmd) {
 
 static id Kotlin_ObjCExport_refToObjC_slowpath(ObjHeader* obj);
 
-template <bool retainAutorelease> static ALWAYS_INLINE id Kotlin_ObjCExport_refToObjCImpl(ObjHeader* obj) {
+template <bool retainAutorelease>
+static ALWAYS_INLINE id Kotlin_ObjCExport_refToObjCImpl(ObjHeader* obj) {
     if (obj == nullptr)
         return nullptr;
 

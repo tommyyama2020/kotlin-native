@@ -41,7 +41,8 @@ KStdStringInserter utf16toUtf8OrThrow(const KChar* start, const KChar* end, KStd
     return result;
 }
 
-template <utf8to16 conversion> OBJ_GETTER(utf8ToUtf16Impl, const char* rawString, const char* end, uint32_t charCount) {
+template <utf8to16 conversion>
+OBJ_GETTER(utf8ToUtf16Impl, const char* rawString, const char* end, uint32_t charCount) {
     if (rawString == nullptr)
         RETURN_OBJ(nullptr);
     ArrayHeader* result = AllocArrayInstance(theStringTypeInfo, charCount, OBJ_RESULT)->array();
@@ -50,7 +51,8 @@ template <utf8to16 conversion> OBJ_GETTER(utf8ToUtf16Impl, const char* rawString
     RETURN_OBJ(result->obj());
 }
 
-template <utf16to8 conversion> OBJ_GETTER(unsafeUtf16ToUtf8Impl, KString thiz, KInt start, KInt size) {
+template <utf16to8 conversion>
+OBJ_GETTER(unsafeUtf16ToUtf8Impl, KString thiz, KInt start, KInt size) {
     RuntimeAssert(thiz->type_info() == theStringTypeInfo, "Must use String");
     const KChar* utf16 = CharArrayAddressOfElementAt(thiz, start);
     KStdString utf8;

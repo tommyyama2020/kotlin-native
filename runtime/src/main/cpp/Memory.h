@@ -111,7 +111,8 @@ struct ContainerHeader {
 
     inline void setRefCount(unsigned refCount) { refCount_ = tag() | (refCount << CONTAINER_TAG_SHIFT); }
 
-    template <bool Atomic> inline void incRefCount() {
+    template <bool Atomic>
+    inline void incRefCount() {
 #ifdef KONAN_NO_THREADS
         refCount_ += CONTAINER_TAG_INCREMENT;
 #else
@@ -122,7 +123,8 @@ struct ContainerHeader {
 #endif
     }
 
-    template <bool Atomic> inline bool tryIncRefCount() {
+    template <bool Atomic>
+    inline bool tryIncRefCount() {
         if (Atomic) {
             while (true) {
                 uint32_t currentRefCount_ = refCount_;
@@ -147,7 +149,8 @@ struct ContainerHeader {
         }
     }
 
-    template <bool Atomic> inline int decRefCount() {
+    template <bool Atomic>
+    inline int decRefCount() {
 #ifdef KONAN_NO_THREADS
         int value = refCount_ -= CONTAINER_TAG_INCREMENT;
 #else
@@ -245,19 +248,23 @@ struct ContainerHeader {
 struct ArrayHeader;
 struct MetaObjHeader;
 
-template <typename T> ALWAYS_INLINE T* setPointerBits(T* ptr, unsigned bits) {
+template <typename T>
+ALWAYS_INLINE T* setPointerBits(T* ptr, unsigned bits) {
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(ptr) | bits);
 }
 
-template <typename T> ALWAYS_INLINE T* clearPointerBits(T* ptr, unsigned bits) {
+template <typename T>
+ALWAYS_INLINE T* clearPointerBits(T* ptr, unsigned bits) {
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(ptr) & ~static_cast<uintptr_t>(bits));
 }
 
-template <typename T> ALWAYS_INLINE unsigned getPointerBits(T* ptr, unsigned bits) {
+template <typename T>
+ALWAYS_INLINE unsigned getPointerBits(T* ptr, unsigned bits) {
     return reinterpret_cast<uintptr_t>(ptr) & static_cast<uintptr_t>(bits);
 }
 
-template <typename T> ALWAYS_INLINE bool hasPointerBits(T* ptr, unsigned bits) {
+template <typename T>
+ALWAYS_INLINE bool hasPointerBits(T* ptr, unsigned bits) {
     return getPointerBits(ptr, bits) != 0;
 }
 

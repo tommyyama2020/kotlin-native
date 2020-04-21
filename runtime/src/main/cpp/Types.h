@@ -65,7 +65,8 @@ typedef const ArrayHeader* KString;
 
 // Definitions of STL classes used inside Konan runtime.
 typedef std::basic_string<char, std::char_traits<char>, KonanAllocator<char>> KStdString;
-template <class Value> using KStdDeque = std::deque<Value, KonanAllocator<Value>>;
+template <class Value>
+using KStdDeque = std::deque<Value, KonanAllocator<Value>>;
 template <class Key, class Value>
 using KStdUnorderedMap =
     std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>, KonanAllocator<std::pair<const Key, Value>>>;
@@ -75,7 +76,8 @@ template <class Value, class Compare = std::less<Value>>
 using KStdOrderedSet = std::set<Value, Compare, KonanAllocator<Value>>;
 template <class Key, class Value, class Compare = std::less<Key>>
 using KStdOrderedMap = std::map<Key, Value, Compare, KonanAllocator<std::pair<const Key, Value>>>;
-template <class Value> using KStdVector = std::vector<Value, KonanAllocator<Value>>;
+template <class Value>
+using KStdVector = std::vector<Value, KonanAllocator<Value>>;
 
 #ifdef __cplusplus
 extern "C" {

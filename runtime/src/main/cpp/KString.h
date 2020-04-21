@@ -37,7 +37,8 @@ void DisposeCString(char* cstring);
 }
 #endif
 
-template <typename T> int binarySearchRange(const T* array, int arrayLength, T needle) {
+template <typename T>
+int binarySearchRange(const T* array, int arrayLength, T needle) {
     int bottom = 0;
     int top = arrayLength - 1;
     int middle = -1;

@@ -75,7 +75,8 @@ static mach_header_target* findCoreFoundationMachHeader() {
     return reinterpret_cast<mach_header_target*>(info.dli_fbase);
 }
 
-template <int n> bool bufferEqualsString(const char (&buffer)[n], const char* str) {
+template <int n>
+bool bufferEqualsString(const char (&buffer)[n], const char* str) {
     return strncmp(buffer, str, n) == 0;
 }
 

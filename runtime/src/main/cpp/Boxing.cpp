@@ -21,7 +21,8 @@
 
 // C++ part of box caching.
 
-template <class T> struct KBox {
+template <class T>
+struct KBox {
     ObjHeader header;
     const T value;
 };
@@ -54,11 +55,13 @@ extern KBox<KLong> LONG_CACHE[];
 
 namespace {
 
-template <class T> inline bool isInRange(T value, T from, T to) {
+template <class T>
+inline bool isInRange(T value, T from, T to) {
     return value >= from && value <= to;
 }
 
-template <class T> OBJ_GETTER(getCachedBox, T value, KBox<T> cache[], T from) {
+template <class T>
+OBJ_GETTER(getCachedBox, T value, KBox<T> cache[], T from) {
     uint64_t index = value - from;
     RETURN_OBJ(&cache[index].header);
 }

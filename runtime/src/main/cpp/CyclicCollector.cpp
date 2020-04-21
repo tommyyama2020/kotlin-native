@@ -81,7 +81,8 @@ public:
     ~Locker() { pthread_mutex_unlock(lock_); }
 };
 
-template <typename func> inline void traverseObjectFields(ObjHeader* obj, func process) {
+template <typename func>
+inline void traverseObjectFields(ObjHeader* obj, func process) {
     RuntimeAssert(obj != nullptr, "Must be non null");
     const TypeInfo* typeInfo = obj->type_info();
     if (typeInfo != theArrayTypeInfo) {

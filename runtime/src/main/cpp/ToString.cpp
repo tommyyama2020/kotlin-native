@@ -39,7 +39,8 @@ char int_to_digit(uint32_t value) {
 }
 
 // Radix is checked on the Kotlin side.
-template <typename T> OBJ_GETTER(Kotlin_toStringRadix, T value, KInt radix) {
+template <typename T>
+OBJ_GETTER(Kotlin_toStringRadix, T value, KInt radix) {
     if (value == 0) {
         RETURN_RESULT_OF(CreateStringFromCString, "0");
     }
