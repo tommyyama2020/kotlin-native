@@ -39,8 +39,8 @@ AlwaysBreakAfterReturnType: None
 # Kt U. Not touching.
 AlwaysBreakBeforeMultilineStrings: false
 # Kt N/A. In Kotlin type parameters are declared inline in a much more compact way.
-# Using MultiLine to be single line whenever it can (together with AllowBreakAfterReturnType makes short function declarations single line, like Kotlin), but allow it to break off for long functions
-AlwaysBreakTemplateDeclarations: MultiLine
+# Using Yes to make it easy to detect function name
+AlwaysBreakTemplateDeclarations: Yes
 # Kt https://kotlinlang.org/docs/reference/coding-conventions.html#method-call-formatting
 BinPackArguments: true
 # Kt https://kotlinlang.org/docs/reference/coding-conventions.html#function-formatting
