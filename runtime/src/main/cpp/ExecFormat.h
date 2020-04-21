@@ -25,6 +25,6 @@ extern "C" {
 
 bool AddressToSymbol(const void* address, char* resultBuffer, size_t resultBufferSize);
 
-}  // extern "C"
+} // extern "C"
 
-#endif  // RUNTIME_EXECFORMAT_H
+#endif // RUNTIME_EXECFORMAT_H

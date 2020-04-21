@@ -19,24 +19,24 @@
 #include "ReturnSlot.h"
 
 #ifdef KONAN_WASM
-namespace  {
+namespace {
 
 THREAD_LOCAL_VARIABLE long long storage;
 
-}  // namespace
+} // namespace
 
 extern "C" {
 
 RUNTIME_USED
 KDouble ReturnSlot_getDouble() {
-  return *reinterpret_cast<KDouble*>(&::storage);
+    return *reinterpret_cast<KDouble*>(&::storage);
 }
 
 RUNTIME_USED
 void ReturnSlot_setDouble(KInt upper, KInt lower) {
-  reinterpret_cast<KInt*>(&::storage)[0] = lower;
-  reinterpret_cast<KInt*>(&::storage)[1] = upper;
+    reinterpret_cast<KInt*>(&::storage)[0] = lower;
+    reinterpret_cast<KInt*>(&::storage)[1] = upper;
 }
 
-}  // extern "C"
-#endif  // KONAN_WASM
+} // extern "C"
+#endif // KONAN_WASM

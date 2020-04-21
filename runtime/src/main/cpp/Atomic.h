@@ -8,36 +8,36 @@
 template <typename T>
 ALWAYS_INLINE inline T atomicAdd(volatile T* where, T what) {
 #ifndef KONAN_NO_THREADS
-  return __sync_add_and_fetch(where, what);
+    return __sync_add_and_fetch(where, what);
 #else
-  return *where += what;
+    return *where += what;
 #endif
 }
 
 template <typename T>
 ALWAYS_INLINE inline T compareAndSwap(volatile T* where, T expectedValue, T newValue) {
 #ifndef KONAN_NO_THREADS
-  return __sync_val_compare_and_swap(where, expectedValue, newValue);
+    return __sync_val_compare_and_swap(where, expectedValue, newValue);
 #else
-   T oldValue = *where;
-   if (oldValue == expectedValue) {
+    T oldValue = *where;
+    if (oldValue == expectedValue) {
         *where = newValue;
-   }
-   return oldValue;
+    }
+    return oldValue;
 #endif
 }
 
 template <typename T>
 ALWAYS_INLINE inline bool compareAndSet(volatile T* where, T expectedValue, T newValue) {
 #ifndef KONAN_NO_THREADS
-  return __sync_bool_compare_and_swap(where, expectedValue, newValue);
+    return __sync_bool_compare_and_swap(where, expectedValue, newValue);
 #else
-   T oldValue = *where;
-   if (oldValue == expectedValue) {
+    T oldValue = *where;
+    if (oldValue == expectedValue) {
         *where = newValue;
         return true;
-   }
-   return false;
+    }
+    return false;
 #endif
 }
 
@@ -54,20 +54,20 @@ ALWAYS_INLINE inline bool compareAndSet(volatile T* where, T expectedValue, T ne
 template <typename T>
 ALWAYS_INLINE inline void atomicSet(volatile T* where, T what) {
 #ifndef KONAN_NO_THREADS
-  __atomic_store(where, &what, __ATOMIC_SEQ_CST);
+    __atomic_store(where, &what, __ATOMIC_SEQ_CST);
 #else
-  *where = what;
+    *where = what;
 #endif
 }
 
 template <typename T>
 ALWAYS_INLINE inline T atomicGet(volatile T* where) {
 #ifndef KONAN_NO_THREADS
-  T what;
-  __atomic_load(where, &what, __ATOMIC_SEQ_CST);
-  return what;
+    T what;
+    __atomic_load(where, &what, __ATOMIC_SEQ_CST);
+    return what;
 #else
-  return *where;
+    return *where;
 #endif
 }
 
@@ -75,7 +75,7 @@ ALWAYS_INLINE inline T atomicGet(volatile T* where) {
 
 static ALWAYS_INLINE inline void synchronize() {
 #ifndef KONAN_NO_THREADS
-  __sync_synchronize();
+    __sync_synchronize();
 #endif
 }
 

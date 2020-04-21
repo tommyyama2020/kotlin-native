@@ -35,19 +35,19 @@ extern "C" const int KonanNeedDebugInfo;
 
 #if KONAN_ENABLE_ASSERT
 // Use RuntimeAssert() in internal state checks, which could be ignored in production.
-#define RuntimeAssert(condition, message)                           \
-if (KonanNeedDebugInfo && (!(condition))) {                         \
-    RuntimeAssertFailed( __FILE__ ":" TOSTRING(__LINE__), message); \
-}
+#define RuntimeAssert(condition, message) \
+    if (KonanNeedDebugInfo && (!(condition))) { \
+        RuntimeAssertFailed(__FILE__ ":" TOSTRING(__LINE__), message); \
+    }
 #else
 #define RuntimeAssert(condition, message)
 #endif
 
 // Use RuntimeCheck() in runtime checks that could fail due to external condition and shall lead
 // to program termination. Never compiled out.
-#define RuntimeCheck(condition, message)   \
-  if (!(condition)) {                      \
-    RuntimeAssertFailed(nullptr, message); \
-  }
+#define RuntimeCheck(condition, message) \
+    if (!(condition)) { \
+        RuntimeAssertFailed(nullptr, message); \
+    }
 
 #endif // RUNTIME_ASSERT_H

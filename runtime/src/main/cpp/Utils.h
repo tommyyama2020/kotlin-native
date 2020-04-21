@@ -20,38 +20,34 @@
 #include "KAssert.h"
 
 class SimpleMutex {
- private:
-  int32_t atomicInt = 0;
+private:
+    int32_t atomicInt = 0;
 
- public:
-  void lock() {
-    while (!__sync_bool_compare_and_swap(&atomicInt, 0, 1)) {
-      // TODO: yield.
+public:
+    void lock() {
+        while (!__sync_bool_compare_and_swap(&atomicInt, 0, 1)) {
+            // TODO: yield.
+        }
     }
-  }
 
-  void unlock() {
-    if (!__sync_bool_compare_and_swap(&atomicInt, 1, 0)) {
-      RuntimeAssert(false, "Unable to unlock");
+    void unlock() {
+        if (!__sync_bool_compare_and_swap(&atomicInt, 1, 0)) {
+            RuntimeAssert(false, "Unable to unlock");
+        }
     }
-  }
 };
 
 // TODO: use std::lock_guard instead?
 template <class Mutex>
 class LockGuard {
- public:
-  explicit LockGuard(Mutex& mutex_) : mutex(mutex_) {
-    mutex.lock();
-  }
+public:
+    explicit LockGuard(Mutex& mutex_) : mutex(mutex_) { mutex.lock(); }
 
-  ~LockGuard() {
-    mutex.unlock();
-  }
+    ~LockGuard() { mutex.unlock(); }
 
- private:
-  Mutex& mutex;
+private:
+    Mutex& mutex;
 
-  LockGuard(const LockGuard&) = delete;
-  LockGuard& operator=(const LockGuard&) = delete;
+    LockGuard(const LockGuard&) = delete;
+    LockGuard& operator=(const LockGuard&) = delete;
 };

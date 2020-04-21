@@ -11,44 +11,44 @@
 #include "Memory.h"
 
 class KRefSharedHolder {
- public:
-  void initLocal(ObjHeader* obj);
+public:
+    void initLocal(ObjHeader* obj);
 
-  void init(ObjHeader* obj);
+    void init(ObjHeader* obj);
 
-  ObjHeader* ref() const;
+    ObjHeader* ref() const;
 
-  void dispose() const;
+    void dispose() const;
 
- private:
-  ObjHeader* obj_;
-  ForeignRefContext context_;
+private:
+    ObjHeader* obj_;
+    ForeignRefContext context_;
 
-  void ensureRefAccessible() const;
+    void ensureRefAccessible() const;
 };
 
 class BackRefFromAssociatedObject {
- public:
-  void initAndAddRef(ObjHeader* obj);
+public:
+    void initAndAddRef(ObjHeader* obj);
 
-  void addRef();
+    void addRef();
 
-  bool tryAddRef();
+    bool tryAddRef();
 
-  void releaseRef();
+    void releaseRef();
 
-  ObjHeader* ref() const;
+    ObjHeader* ref() const;
 
-  inline bool permanent() const {
-    return obj_->permanent(); // Safe to query from any thread.
-  }
+    inline bool permanent() const {
+        return obj_->permanent(); // Safe to query from any thread.
+    }
 
- private:
-  ObjHeader* obj_;
-  ForeignRefContext context_;
-  volatile int refCount;
+private:
+    ObjHeader* obj_;
+    ForeignRefContext context_;
+    volatile int refCount;
 
-  void ensureRefAccessible() const;
+    void ensureRefAccessible() const;
 };
 
 #endif // RUNTIME_MEMORYSHAREDREFS_HPP
