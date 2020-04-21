@@ -34,92 +34,90 @@ extern "C" OBJ_GETTER(Kotlin_Throwable_getMessage, KRef throwable);
 extern "C" OBJ_GETTER(Kotlin_ObjCExport_getWrappedError, KRef throwable);
 
 static void printlnMessage(const char* message) {
-    konan::consolePrintf("%s\n", message);
+  konan::consolePrintf("%s\n", message);
 }
 
 extern "C" RUNTIME_NORETURN void Kotlin_ObjCExport_trapOnUndeclaredException(KRef exception) {
-    printlnMessage("Function doesn't have or inherit @Throws annotation and thus exception isn't propagated "
-                   "from Kotlin to Objective-C/Swift as NSError.\n"
-                   "It is considered unexpected and unhandled instead. Program will be terminated.");
+  printlnMessage("Function doesn't have or inherit @Throws annotation and thus exception isn't propagated "
+                 "from Kotlin to Objective-C/Swift as NSError.\n"
+                 "It is considered unexpected and unhandled instead. Program will be terminated.");
 
-    TerminateWithUnhandledException(exception);
+  TerminateWithUnhandledException(exception);
 }
 
 static char kotlinExceptionOriginChar;
 
 static bool isExceptionOfType(KRef exception, const TypeInfo** types) {
-    for (int i = 0; types[i] != nullptr; ++i) {
-        // TODO: use fast instance check when possible.
-        if (IsInstance(exception, types[i]))
-            return true;
-    }
+  for (int i = 0; types[i] != nullptr; ++i) {
+    // TODO: use fast instance check when possible.
+    if (IsInstance(exception, types[i])) return true;
+  }
 
-    return false;
+  return false;
 }
 
 extern "C" id Kotlin_ObjCExport_ExceptionAsNSError(KRef exception, const TypeInfo** types) {
-    ObjHolder errorHolder;
-    KRef error = Kotlin_ObjCExport_getWrappedError(exception, errorHolder.slot());
-    if (error != nullptr) {
-        // Thrown originally by Swift/Objective-C.
-        // Not actually a Kotlin exception, so don't check if it matches [types].
-        return Kotlin_ObjCExport_refToObjC(error);
-    }
+  ObjHolder errorHolder;
+  KRef error = Kotlin_ObjCExport_getWrappedError(exception, errorHolder.slot());
+  if (error != nullptr) {
+    // Thrown originally by Swift/Objective-C.
+    // Not actually a Kotlin exception, so don't check if it matches [types].
+    return Kotlin_ObjCExport_refToObjC(error);
+  }
 
-    if (!isExceptionOfType(exception, types)) {
-        printlnMessage("Exception doesn't match @Throws-specified class list and thus isn't propagated "
-                       "from Kotlin to Objective-C/Swift as NSError.\n"
-                       "It is considered unexpected and unhandled instead. Program will be terminated.");
-        TerminateWithUnhandledException(exception);
-    }
+  if (!isExceptionOfType(exception, types)) {
+    printlnMessage("Exception doesn't match @Throws-specified class list and thus isn't propagated "
+                   "from Kotlin to Objective-C/Swift as NSError.\n"
+                   "It is considered unexpected and unhandled instead. Program will be terminated.");
+    TerminateWithUnhandledException(exception);
+  }
 
-    NSMutableDictionary<NSErrorUserInfoKey, id>* userInfo = [[NSMutableDictionary new] autorelease];
-    userInfo[@"KotlinException"] = Kotlin_ObjCExport_refToObjC(exception);
-    userInfo[@"KotlinExceptionOrigin"] = @(&kotlinExceptionOriginChar); // Support for different Kotlin runtimes loaded.
+  NSMutableDictionary<NSErrorUserInfoKey, id>* userInfo = [[NSMutableDictionary new] autorelease];
+  userInfo[@"KotlinException"] = Kotlin_ObjCExport_refToObjC(exception);
+  userInfo[@"KotlinExceptionOrigin"] = @(&kotlinExceptionOriginChar); // Support for different Kotlin runtimes loaded.
 
-    ObjHolder messageHolder;
-    KRef message = Kotlin_Throwable_getMessage(exception, messageHolder.slot());
-    NSString* description = Kotlin_Interop_CreateNSStringFromKString(message);
-    if (description != nullptr) {
-        userInfo[NSLocalizedDescriptionKey] = description;
-    }
+  ObjHolder messageHolder;
+  KRef message = Kotlin_Throwable_getMessage(exception, messageHolder.slot());
+  NSString* description = Kotlin_Interop_CreateNSStringFromKString(message);
+  if (description != nullptr) {
+    userInfo[NSLocalizedDescriptionKey] = description;
+  }
 
-    return [NSError errorWithDomain:@"KotlinException" code:0 userInfo:userInfo];
+  return [NSError errorWithDomain:@"KotlinException" code:0 userInfo:userInfo];
 }
 
 extern "C" void Kotlin_ObjCExport_RethrowExceptionAsNSError(KRef exception, id* outError, const TypeInfo** types) {
     id error = Kotlin_ObjCExport_ExceptionAsNSError(exception, types); // Also traps on unexpected exception.
-    if (outError != nullptr)
-        *outError = error;
+    if (outError != nullptr) *outError = error;
 }
 
 extern "C" OBJ_GETTER(Kotlin_ObjCExport_NSErrorAsExceptionImpl, KRef message, KRef error);
 
 extern "C" OBJ_GETTER(Kotlin_ObjCExport_NSErrorAsException, id error) {
-    NSString* description;
+  NSString* description;
 
-    NSError* e = (NSError*)error;
-    if (e != nullptr) {
-        auto userInfo = e.userInfo;
-        if (userInfo != nullptr) {
-            id kotlinException = userInfo[@"KotlinException"];
-            id kotlinExceptionOrigin = userInfo[@"KotlinExceptionOrigin"];
-            if (kotlinException != nullptr && kotlinExceptionOrigin != nullptr &&
-                [kotlinExceptionOrigin isEqual:@(&kotlinExceptionOriginChar)]) {
-                RETURN_RESULT_OF(Kotlin_ObjCExport_refFromObjC, kotlinException);
-            }
-        }
-        description = e.localizedDescription;
-    } else {
-        description = nullptr;
+  NSError* e = (NSError*) error;
+  if (e != nullptr) {
+    auto userInfo = e.userInfo;
+    if (userInfo != nullptr) {
+      id kotlinException = userInfo[@"KotlinException"];
+      id kotlinExceptionOrigin = userInfo[@"KotlinExceptionOrigin"];
+      if (kotlinException != nullptr &&
+            kotlinExceptionOrigin != nullptr && [kotlinExceptionOrigin isEqual:@(&kotlinExceptionOriginChar)]
+      ) {
+        RETURN_RESULT_OF(Kotlin_ObjCExport_refFromObjC, kotlinException);
+      }
     }
+    description = e.localizedDescription;
+  } else {
+    description = nullptr;
+  }
 
-    ObjHolder messageHolder, errorHolder;
-    KRef message = Kotlin_Interop_CreateKStringFromNSString(description, messageHolder.slot());
-    KRef kotlinError =
-        Kotlin_ObjCExport_refFromObjC(error, errorHolder.slot()); // TODO: a simple opaque wrapper would be enough.
+  ObjHolder messageHolder, errorHolder;
+  KRef message = Kotlin_Interop_CreateKStringFromNSString(description, messageHolder.slot());
+  KRef kotlinError = Kotlin_ObjCExport_refFromObjC(error, errorHolder.slot()); // TODO: a simple opaque wrapper would be enough.
 
-    RETURN_RESULT_OF(Kotlin_ObjCExport_NSErrorAsExceptionImpl, message, kotlinError);
+  RETURN_RESULT_OF(Kotlin_ObjCExport_NSErrorAsExceptionImpl, message, kotlinError);
 }
 
 extern "C" void Kotlin_ObjCExport_RethrowNSErrorAsException(id error) {
@@ -129,15 +127,13 @@ extern "C" void Kotlin_ObjCExport_RethrowNSErrorAsException(id error) {
 }
 
 @interface NSError (NSErrorKotlinException)
-@end
-;
+@end;
 
 @implementation NSError (NSErrorKotlinException)
-- (id)kotlinException {
-    auto userInfo = self.userInfo;
-    return userInfo == nullptr ? nullptr : userInfo[@"KotlinException"];
+-(id)kotlinException {
+  auto userInfo = self.userInfo;
+  return userInfo == nullptr ? nullptr : userInfo[@"KotlinException"];
 }
-@end
-;
+@end;
 
 #endif

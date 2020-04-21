@@ -16,4 +16,4 @@ void cyclicCollectorCallback(void* worker);
 void cyclicLocalGC();
 void cyclicScheduleGarbageCollect();
 
-#endif // RUNTIME_CYCLIC_COLLECTOR_H
+#endif  // RUNTIME_CYCLIC_COLLECTOR_H

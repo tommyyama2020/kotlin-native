@@ -42,6 +42,6 @@ bool IsForeignRefAccessible(ObjHeader* object, ForeignRefContext context);
 // and there's nothing else keeping the object alive.
 void AdoptReferenceFromSharedVariable(ObjHeader* object);
 
-} // extern "C"
+}  // extern "C"
 
 #endif // RUNTIME_MEMORYPRIVATE_HPP

@@ -28,7 +28,7 @@ KDouble ReturnSlot_getDouble();
 void ReturnSlot_setDouble(KInt upper, KInt lower);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // KONAN_WASM
+#endif  // KONAN_WASM

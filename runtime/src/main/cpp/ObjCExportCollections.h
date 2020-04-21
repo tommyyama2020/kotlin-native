@@ -21,8 +21,8 @@
 
 #if KONAN_OBJC_INTEROP
 
-#import <Foundation/NSNull.h>
 #import <objc/runtime.h>
+#import <Foundation/NSNull.h>
 
 #import "Memory.h"
 #import "ObjCExport.h"
@@ -32,29 +32,29 @@
 // Follow the convention when converting Kotlin `null`:
 
 static inline id refToObjCOrNSNull(KRef obj) {
-    if (obj == nullptr) {
-        return NSNull.null;
-    } else {
-        return Kotlin_ObjCExport_refToObjC(obj);
-    }
+  if (obj == nullptr) {
+    return NSNull.null;
+  } else {
+    return Kotlin_ObjCExport_refToObjC(obj);
+  }
 }
 
 static inline OBJ_GETTER(refFromObjCOrNSNull, id obj) {
-    if (obj == NSNull.null) {
-        RETURN_OBJ(nullptr);
-    } else {
-        RETURN_RESULT_OF(Kotlin_ObjCExport_refFromObjC, obj);
-    }
+  if (obj == NSNull.null) {
+    RETURN_OBJ(nullptr);
+  } else {
+    RETURN_RESULT_OF(Kotlin_ObjCExport_refFromObjC, obj);
+  }
 }
 
 static inline OBJ_GETTER(invokeAndAssociate, KRef (*func)(KRef* result), id obj) {
-    Kotlin_initRuntimeIfNeeded();
+  Kotlin_initRuntimeIfNeeded();
 
-    KRef kotlinObj = func(OBJ_RESULT);
+  KRef kotlinObj = func(OBJ_RESULT);
 
-    SetAssociatedObject(kotlinObj, obj);
+  SetAssociatedObject(kotlinObj, obj);
 
-    return kotlinObj;
+  return kotlinObj;
 }
 
 #endif // KONAN_OBJC_INTEROP

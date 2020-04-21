@@ -14,6 +14,9 @@
 // Releases mutex and waits on cond for timeoutNanoseconds.
 // Returns ETIMEDOUT if timeoutNanoseconds has passed.
 int WaitOnCondVar(
-    pthread_cond_t* cond, pthread_mutex_t* mutex, uint64_t timeoutNanoseconds, uint64_t* microsecondsPassed = nullptr);
+    pthread_cond_t* cond,
+    pthread_mutex_t* mutex,
+    uint64_t timeoutNanoseconds,
+    uint64_t* microsecondsPassed = nullptr);
 
-#endif // RUNTIME_PTHREAD_UTILS_H
+#endif  // RUNTIME_PTHREAD_UTILS_H
