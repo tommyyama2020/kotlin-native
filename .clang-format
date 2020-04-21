@@ -30,7 +30,6 @@ AllowShortCaseLabelsOnASingleLine: false
 # Kt https://kotlinlang.org/docs/reference/coding-conventions.html#function-formatting Inline is somewhat close to "single expression" functions
 AllowShortFunctionsOnASingleLine: Inline
 # Kt U. The closest is https://kotlinlang.org/docs/reference/coding-conventions.html#using-conditional-statements however it mostly refers to the ternary operator.
-# Using false, because during a debugger session it'll be easier to see which (if any) branch was taken
 AllowShortIfStatementsOnASingleLine: true
 # Kt U. Same as previous
 AllowShortLoopsOnASingleLine: true
