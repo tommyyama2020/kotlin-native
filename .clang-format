@@ -31,9 +31,9 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Inline
 # Kt U. The closest is https://kotlinlang.org/docs/reference/coding-conventions.html#using-conditional-statements however it mostly refers to the ternary operator.
 # Using false, because during a debugger session it'll be easier to see which (if any) branch was taken
-AllowShortIfStatementsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: true
 # Kt U. Same as previous
-AllowShortLoopsOnASingleLine: false
+AllowShortLoopsOnASingleLine: true
 # Kt N/A. In Kotlin return type is in a trailing position.
 AlwaysBreakAfterReturnType: None
 # Kt U. Not touching.
