@@ -13,31 +13,31 @@
 extern "C" OBJ_GETTER(Kotlin_Throwable_getStackTrace, KRef throwable);
 
 static void writeStackTraceToBuffer(KRef throwable, char* buffer, unsigned long bufferSize) {
-  if (bufferSize < 2) return;
+    if (bufferSize < 2) return;
 
-  ObjHolder stackTraceHolder;
-  ArrayHeader* stackTrace = Kotlin_Throwable_getStackTrace(throwable, stackTraceHolder.slot())->array();
+    ObjHolder stackTraceHolder;
+    ArrayHeader* stackTrace = Kotlin_Throwable_getStackTrace(throwable, stackTraceHolder.slot())->array();
 
-  char* bufferPointer = buffer;
-  unsigned long remainingBytes = bufferSize;
+    char* bufferPointer = buffer;
+    unsigned long remainingBytes = bufferSize;
 
-  *(bufferPointer++) = '(';
-  --remainingBytes;
+    *(bufferPointer++) = '(';
+    --remainingBytes;
 
-  for (int index = 0; index < stackTrace->count_; ++index) {
-    KNativePtr ptr = *PrimitiveArrayAddressOfElementAt<KNativePtr>(stackTrace, index);
-    int bytes = snprintf(bufferPointer, remainingBytes, "0x%" PRIxPTR " ", reinterpret_cast<uintptr_t>(ptr));
+    for (int index = 0; index < stackTrace->count_; ++index) {
+        KNativePtr ptr = *PrimitiveArrayAddressOfElementAt<KNativePtr>(stackTrace, index);
+        int bytes = snprintf(bufferPointer, remainingBytes, "0x%" PRIxPTR " ", reinterpret_cast<uintptr_t>(ptr));
 
-    if (bytes >= remainingBytes) {
-      break;
+        if (bytes >= remainingBytes) {
+            break;
+        }
+
+        bufferPointer += bytes;
+        remainingBytes -= bytes;
     }
 
-    bufferPointer += bytes;
-    remainingBytes -= bytes;
-  }
-
-  *(bufferPointer - 1) = ')'; // Replace last space.
-  *bufferPointer = '\0';
+    *(bufferPointer - 1) = ')'; // Replace last space.
+    *bufferPointer = '\0';
 }
 
 #if !defined(MACHSIZE)
@@ -67,61 +67,61 @@ static const uint32_t LC_SEGMENT_TARGET = LC_SEGMENT_64;
 #endif
 
 static mach_header_target* findCoreFoundationMachHeader() {
-  Dl_info info;
-  if (dladdr(reinterpret_cast<void*>(&CFRunLoopRun), &info) == 0) return nullptr;
+    Dl_info info;
+    if (dladdr(reinterpret_cast<void*>(&CFRunLoopRun), &info) == 0) return nullptr;
 
-  return reinterpret_cast<mach_header_target*>(info.dli_fbase);
+    return reinterpret_cast<mach_header_target*>(info.dli_fbase);
 }
 
-template<int n>
+template <int n>
 bool bufferEqualsString(const char (&buffer)[n], const char* str) {
-  return strncmp(buffer, str, n) == 0;
+    return strncmp(buffer, str, n) == 0;
 }
 
-static char* findExceptionBacktraceSection(unsigned long *size) {
-  mach_header_target* header = findCoreFoundationMachHeader();
-  if (header == nullptr) return nullptr;
-  if (header->magic != MH_MAGIC_TARGET) return nullptr;
+static char* findExceptionBacktraceSection(unsigned long* size) {
+    mach_header_target* header = findCoreFoundationMachHeader();
+    if (header == nullptr) return nullptr;
+    if (header->magic != MH_MAGIC_TARGET) return nullptr;
 
-  uintptr_t textVmaddr = 0;
+    uintptr_t textVmaddr = 0;
 
-  load_command* loadCommand = reinterpret_cast<load_command*>(header + 1);
-  for (uint32_t loadCommandIndex = 0; loadCommandIndex < header->ncmds; ++loadCommandIndex) {
-    if (loadCommand->cmd == LC_SEGMENT_TARGET) {
-      segment_command_target* segmentCommand = reinterpret_cast<segment_command_target*>(loadCommand);
-      if (bufferEqualsString(segmentCommand->segname, "__TEXT")) {
-        textVmaddr = segmentCommand->vmaddr;
-      }
+    load_command* loadCommand = reinterpret_cast<load_command*>(header + 1);
+    for (uint32_t loadCommandIndex = 0; loadCommandIndex < header->ncmds; ++loadCommandIndex) {
+        if (loadCommand->cmd == LC_SEGMENT_TARGET) {
+            segment_command_target* segmentCommand = reinterpret_cast<segment_command_target*>(loadCommand);
+            if (bufferEqualsString(segmentCommand->segname, "__TEXT")) {
+                textVmaddr = segmentCommand->vmaddr;
+            }
 
-      if (bufferEqualsString(segmentCommand->segname, "__DATA")) {
-        section_target* sections = reinterpret_cast<section_target*>(segmentCommand + 1);
-        for (uint32_t sectionIndex = 0; sectionIndex < segmentCommand->nsects; ++sectionIndex) {
-          section_target* section = &sections[sectionIndex];
+            if (bufferEqualsString(segmentCommand->segname, "__DATA")) {
+                section_target* sections = reinterpret_cast<section_target*>(segmentCommand + 1);
+                for (uint32_t sectionIndex = 0; sectionIndex < segmentCommand->nsects; ++sectionIndex) {
+                    section_target* section = &sections[sectionIndex];
 
-          if (bufferEqualsString(section->sectname, "__cf_except_bt") && bufferEqualsString(section->segname, "__DATA")) {
-            *size = section->size;
-            return reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(header) + section->addr - textVmaddr);
-          }
+                    if (bufferEqualsString(section->sectname, "__cf_except_bt") && bufferEqualsString(section->segname, "__DATA")) {
+                        *size = section->size;
+                        return reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(header) + section->addr - textVmaddr);
+                    }
+                }
+            }
         }
-      }
+
+        loadCommand = reinterpret_cast<load_command*>(reinterpret_cast<uintptr_t>(loadCommand) + loadCommand->cmdsize);
     }
 
-    loadCommand = reinterpret_cast<load_command*>(reinterpret_cast<uintptr_t>(loadCommand) + loadCommand->cmdsize);
-  }
-
-  return nullptr;
+    return nullptr;
 }
 
 void ReportBacktraceToIosCrashLog(KRef throwable) {
-  unsigned long bufferSize = 0;
-  char* buffer = findExceptionBacktraceSection(&bufferSize);
-  if (buffer == nullptr) return;
+    unsigned long bufferSize = 0;
+    char* buffer = findExceptionBacktraceSection(&bufferSize);
+    if (buffer == nullptr) return;
 
-  // Note: access to this buffer is protected by a lock, but it is not easily accessible.
-  // Instead assume that typically this buffer is accessed only during termination, and
-  // rely on caller guaranteeing this code to be executed only before system termination handlers.
+    // Note: access to this buffer is protected by a lock, but it is not easily accessible.
+    // Instead assume that typically this buffer is accessed only during termination, and
+    // rely on caller guaranteeing this code to be executed only before system termination handlers.
 
-  writeStackTraceToBuffer(throwable, buffer, bufferSize);
+    writeStackTraceToBuffer(throwable, buffer, bufferSize);
 }
 
 #endif // KONAN_REPORT_BACKTRACE_TO_IOS_CRASH_LOG

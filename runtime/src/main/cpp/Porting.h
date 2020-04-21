@@ -45,7 +45,7 @@ void onThreadExit(void (*destructor)(void*), void* destructorParameter);
 // String/byte operations.
 // memcpy/memmove/memcmp are not here intentionally, as frequently implemented/optimized
 // by C compiler.
-void* memmem(const void *big, size_t bigLen, const void *little, size_t littleLen);
+void* memmem(const void* big, size_t bigLen, const void* little, size_t littleLen);
 int snprintf(char* buffer, size_t size, const char* format, ...);
 size_t strnlen(const char* buffer, size_t maxSize);
 
@@ -62,16 +62,16 @@ RUNTIME_USED
 double pow(double x, double y);
 
 RUNTIME_USED
-void *memcpy(void *dst, const void *src, size_t n);
+void* memcpy(void* dst, const void* src, size_t n);
 
 RUNTIME_USED
-void *memmove(void *dst, const void *src, size_t len);
+void* memmove(void* dst, const void* src, size_t len);
 
 RUNTIME_USED
-int memcmp(const void *s1, const void *s2, size_t n);
+int memcmp(const void* s1, const void* s2, size_t n);
 
 RUNTIME_USED
-void *memset(void *b, int c, size_t len);
+void* memset(void* b, int c, size_t len);
 
 #endif
 }
@@ -89,12 +89,15 @@ uint64_t getTimeNanos();
 #define TRY_CATCH(tryAction, actionWithoutExceptions, catchAction) actionWithoutExceptions;
 #else
 #define TRY_CATCH(tryAction, actionWithoutExceptions, catchAction) \
-do {                          \
-  try { tryAction; }          \
-  catch(...) { catchAction; } \
-} while(0)
+    do { \
+        try { \
+            tryAction; \
+        } catch (...) { \
+            catchAction; \
+        } \
+    } while (0)
 #endif
 
-}  // namespace konan
+} // namespace konan
 
-#endif  // RUNTIME_PORTING_H
+#endif // RUNTIME_PORTING_H
