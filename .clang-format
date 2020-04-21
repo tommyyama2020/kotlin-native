@@ -89,15 +89,15 @@ BreakInheritanceList: AfterColon
 # Kt U. Choosing to break long strings to fit into line length
 BreakStringLiterals: true
 # Kt U. IDEA displays a vertical guide at 120. Choosing it to avoid very long lines.
-ColumnLimit: 120
+ColumnLimit: 140
 # Kt N/A. Probably should use nested namespaces instead.
 CompactNamespaces: false
 # Kt N/A. The closest is https://kotlinlang.org/docs/reference/coding-conventions.html#class-header-formatting
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 # Kt https://kotlinlang.org/docs/reference/coding-conventions.html#formatting
 ConstructorInitializerIndentWidth: 4
-# Kt https://kotlinlang.org/docs/reference/coding-conventions.html#formatting
-ContinuationIndentWidth: 4
+# Kt https://kotlinlang.org/docs/reference/coding-conventions.html#formatting IDEA seems to indent continuations with 8
+ContinuationIndentWidth: 8
 # Kt N/A. The closest is https://kotlinlang.org/docs/reference/coding-conventions.html#horizontal-whitespace
 # Braced initalizer braces are close to parens in function call or to brackets in array initialier. And styleguide asks not to put spaces in them.
 Cpp11BracedListStyle: true
