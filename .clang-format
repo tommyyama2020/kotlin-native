@@ -143,10 +143,10 @@ ObjCSpaceBeforeProtocolList: false
 PointerAlignment: Left
 # Kt U. Reflow comments to fit into line width
 ReflowComments: true
-# Kt U. IDEA allows sorting, so do it.
-SortIncludes: true
+# Kt U. IDEA does not sort by default, but allows this option. Do not touch.
+SortIncludes: false
 # Kt U. Like SortIncludes.
-SortUsingDeclarations: true
+SortUsingDeclarations: false
 # Kt N/A.
 SpaceAfterCStyleCast: false
 # Kt N/A. IDEA puts space in `fun <T>`
