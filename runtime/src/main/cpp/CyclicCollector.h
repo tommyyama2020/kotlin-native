@@ -1,5 +1,5 @@
 // TODO: Consider reformatting this file.
-// clang-format off
+// clang-format on
 #ifndef RUNTIME_CYCLIC_COLLECTOR_H
 #define RUNTIME_CYCLIC_COLLECTOR_H
 

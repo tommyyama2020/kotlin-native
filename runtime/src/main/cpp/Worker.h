@@ -1,5 +1,5 @@
 // TODO: Consider reformatting this file.
-// clang-format off
+// clang-format on
 #ifndef RUNTIME_WORKER_H
 #define RUNTIME_WORKER_H
 

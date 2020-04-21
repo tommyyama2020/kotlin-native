@@ -1,5 +1,5 @@
 // TODO: Consider reformatting this file.
-// clang-format off
+// clang-format on
 #if KONAN_REPORT_BACKTRACE_TO_IOS_CRASH_LOG
 
 #include <dlfcn.h>
