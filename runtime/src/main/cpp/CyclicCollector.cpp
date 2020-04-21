@@ -73,443 +73,447 @@
 namespace {
 
 class Locker {
-  pthread_mutex_t* lock_;
+    pthread_mutex_t* lock_;
 
- public:
-  Locker(pthread_mutex_t* alock): lock_(alock) {
-    pthread_mutex_lock(lock_);
-  }
+public:
+    Locker(pthread_mutex_t* alock) : lock_(alock) { pthread_mutex_lock(lock_); }
 
-  ~Locker() {
-    pthread_mutex_unlock(lock_);
-  }
+    ~Locker() { pthread_mutex_unlock(lock_); }
 };
 
-template <typename func>
-inline void traverseObjectFields(ObjHeader* obj, func process) {
-  RuntimeAssert(obj != nullptr, "Must be non null");
-  const TypeInfo* typeInfo = obj->type_info();
-  if (typeInfo != theArrayTypeInfo) {
-    for (int index = 0; index < typeInfo->objOffsetsCount_; index++) {
-      ObjHeader** location = reinterpret_cast<ObjHeader**>(
-          reinterpret_cast<uintptr_t>(obj) + typeInfo->objOffsets_[index]);
-      process(location);
+template <typename func> inline void traverseObjectFields(ObjHeader* obj, func process) {
+    RuntimeAssert(obj != nullptr, "Must be non null");
+    const TypeInfo* typeInfo = obj->type_info();
+    if (typeInfo != theArrayTypeInfo) {
+        for (int index = 0; index < typeInfo->objOffsetsCount_; index++) {
+            ObjHeader** location =
+                reinterpret_cast<ObjHeader**>(reinterpret_cast<uintptr_t>(obj) + typeInfo->objOffsets_[index]);
+            process(location);
+        }
+    } else {
+        ArrayHeader* array = obj->array();
+        for (int index = 0; index < array->count_; index++) {
+            process(ArrayAddressOfElementAt(array, index));
+        }
     }
-  } else {
-    ArrayHeader* array = obj->array();
-    for (int index = 0; index < array->count_; index++) {
-      process(ArrayAddressOfElementAt(array, index));
-    }
-  }
 }
 
 inline bool isAtomicReference(ObjHeader* obj) {
-  return (obj->type_info()->flags_ & TF_LEAK_DETECTOR_CANDIDATE) != 0;
+    return (obj->type_info()->flags_ & TF_LEAK_DETECTOR_CANDIDATE) != 0;
 }
 
 #define CHECK_CALL(call, message) RuntimeCheck((call) == 0, message)
 
 class CyclicCollector {
-  pthread_mutex_t lock_;
-  pthread_mutex_t timestampLock_;
-  pthread_cond_t cond_;
-  pthread_t gcThread_;
+    pthread_mutex_t lock_;
+    pthread_mutex_t timestampLock_;
+    pthread_cond_t cond_;
+    pthread_t gcThread_;
 
-  int currentAliveWorkers_;
-  int gcRunning_;
-  int mutatedAtomics_;
-  int pendingRelease_;
-  bool shallRunCollector_;
-  bool terminateCollector_;
-  int32_t currentTick_;
-  int32_t lastTick_;
-  int64_t lastTimestampUs_;
-  void* mainWorker_;
-  KStdUnorderedSet<ObjHeader*> rootset_;
-  KStdUnorderedSet<ObjHeader*> toRelease_;
+    int currentAliveWorkers_;
+    int gcRunning_;
+    int mutatedAtomics_;
+    int pendingRelease_;
+    bool shallRunCollector_;
+    bool terminateCollector_;
+    int32_t currentTick_;
+    int32_t lastTick_;
+    int64_t lastTimestampUs_;
+    void* mainWorker_;
+    KStdUnorderedSet<ObjHeader*> rootset_;
+    KStdUnorderedSet<ObjHeader*> toRelease_;
 
- public:
-  CyclicCollector() {
-    CHECK_CALL(pthread_mutex_init(&lock_, nullptr), "Cannot init collector mutex")
-    CHECK_CALL(pthread_mutex_init(&timestampLock_, nullptr), "Cannot init collector timestamp mutex")
-    CHECK_CALL(pthread_cond_init(&cond_, nullptr), "Cannot init collector condition")
-    CHECK_CALL(pthread_create(&gcThread_, nullptr, gcWorkerRoutine, this), "Cannot start collector thread")
-  }
-
-  void clear() {
-    Locker lock(&lock_);
-    rootset_.clear();
-    toRelease_.clear();
-  }
-
-  void terminate(bool enabled) {
-    {
-      Locker locker(&lock_);
-      terminateCollector_ = true;
-      if (enabled) shallRunCollector_ = true;
-      CHECK_CALL(pthread_cond_signal(&cond_), "Cannot signal collector")
+public:
+    CyclicCollector() {
+        CHECK_CALL(pthread_mutex_init(&lock_, nullptr), "Cannot init collector mutex")
+        CHECK_CALL(pthread_mutex_init(&timestampLock_, nullptr), "Cannot init collector timestamp mutex")
+        CHECK_CALL(pthread_cond_init(&cond_, nullptr), "Cannot init collector condition")
+        CHECK_CALL(pthread_create(&gcThread_, nullptr, gcWorkerRoutine, this), "Cannot start collector thread")
     }
-    // TODO: improve waiting for collector termination.
-    while (atomicGet(&terminateCollector_)) {}
-    releasePendingUnlocked(nullptr);
-  }
 
-  ~CyclicCollector() {
-    pthread_cond_destroy(&cond_);
-    pthread_mutex_destroy(&lock_);
-    pthread_mutex_destroy(&timestampLock_);
-  }
+    void clear() {
+        Locker lock(&lock_);
+        rootset_.clear();
+        toRelease_.clear();
+    }
 
-  static void* gcWorkerRoutine(void* argument) {
-    CyclicCollector* thiz = reinterpret_cast<CyclicCollector*>(argument);
-    thiz->gcProcessor();
-    return nullptr;
-  }
+    void terminate(bool enabled) {
+        {
+            Locker locker(&lock_);
+            terminateCollector_ = true;
+            if (enabled)
+                shallRunCollector_ = true;
+            CHECK_CALL(pthread_cond_signal(&cond_), "Cannot signal collector")
+        }
+        // TODO: improve waiting for collector termination.
+        while (atomicGet(&terminateCollector_)) {
+        }
+        releasePendingUnlocked(nullptr);
+    }
 
-  void gcProcessor() {
-     {
-       Locker locker(&lock_);
-       KStdDeque<ObjHeader*> toVisit;
-       KStdUnorderedSet<ObjHeader*> visited;
-       KStdUnorderedMap<ObjHeader*, int> sideRefCounts;
-       int restartCount = 0;
-       while (!terminateCollector_) {
-         CHECK_CALL(pthread_cond_wait(&cond_, &lock_), "Cannot wait collector condition")
-         if (!shallRunCollector_) continue;
-         atomicSet(&gcRunning_, 1);
-         restartCount = 0;
-        restart:
-         COLLECTOR_LOG("start cycle GC\n");
-         if (restartCount > 10 && !terminateCollector_) {
-           COLLECTOR_LOG("wait for some time to avoid GC thrashing\n");
-           uint64_t nsDelta = 1000LL * 1000LL * (restartCount - 10);
-           WaitOnCondVar(&cond_, &lock_, nsDelta);
-         }
-         atomicSet(&mutatedAtomics_, 0);
-         visited.clear();
-         toVisit.clear();
-         sideRefCounts.clear();
-         for (auto* root: rootset_) {
-           // We only care about frozen values here, as only they could become part of shared cycles.
-           if (!root->container()->frozen()) continue;
-           COLLECTOR_LOG("process root %p\n", root);
-           toVisit.push_back(root);
-           sideRefCounts[root] = 0;
-         }
-         while (toVisit.size() > 0)  {
-           if (atomicGet(&mutatedAtomics_) != 0) {
-             COLLECTOR_LOG("restarted during rootset visit\n")
-             restartCount++;
-             goto restart;
-           }
-           auto* obj = toVisit.front();
-           toVisit.pop_front();
-           COLLECTOR_LOG("visit %s%p\n", isAtomicReference(obj) ? "atomic " : "", obj);
-           auto* objContainer = obj->container();
-           if (objContainer == nullptr) continue;  // Permanent object.
-           RuntimeCheck(objContainer->shareable(), "Must be shareable");
-           if (visited.count(obj) == 0) {
-             visited.insert(obj);
-             traverseObjectFields(obj, [&toVisit, obj, &sideRefCounts](ObjHeader** location) {
-                ObjHeader* ref = *location;
-                if (ref != nullptr) {
-                  COLLECTOR_LOG("object field %p in %p\n", ref, obj)
-                  int increment;
-                  // We shall not account for edges inside the same frozen container, unless it originates
-                  // from an atomic reference.
-                  if (isAtomicReference(obj) || (obj->container() != ref->container())) {
-                    COLLECTOR_LOG("counting %p -> %p\n", obj, ref)
-                    increment = 1;
-                  } else {
-                    COLLECTOR_LOG("not counting %p -> %p\n", obj, ref)
-                    increment = 0;
-                  }
-                  sideRefCounts[ref] += increment;
-                  toVisit.push_back(ref);
+    ~CyclicCollector() {
+        pthread_cond_destroy(&cond_);
+        pthread_mutex_destroy(&lock_);
+        pthread_mutex_destroy(&timestampLock_);
+    }
+
+    static void* gcWorkerRoutine(void* argument) {
+        CyclicCollector* thiz = reinterpret_cast<CyclicCollector*>(argument);
+        thiz->gcProcessor();
+        return nullptr;
+    }
+
+    void gcProcessor() {
+        {
+            Locker locker(&lock_);
+            KStdDeque<ObjHeader*> toVisit;
+            KStdUnorderedSet<ObjHeader*> visited;
+            KStdUnorderedMap<ObjHeader*, int> sideRefCounts;
+            int restartCount = 0;
+            while (!terminateCollector_) {
+                CHECK_CALL(pthread_cond_wait(&cond_, &lock_), "Cannot wait collector condition")
+                if (!shallRunCollector_)
+                    continue;
+                atomicSet(&gcRunning_, 1);
+                restartCount = 0;
+            restart:
+                COLLECTOR_LOG("start cycle GC\n");
+                if (restartCount > 10 && !terminateCollector_) {
+                    COLLECTOR_LOG("wait for some time to avoid GC thrashing\n");
+                    uint64_t nsDelta = 1000LL * 1000LL * (restartCount - 10);
+                    WaitOnCondVar(&cond_, &lock_, nsDelta);
                 }
-             });
-           }
-         }
-         // Now find all elements with external references, and mark objects reachable from them as non suitable
-         // for collection by setting their side reference count to -1.
-         toVisit.clear();
-         for (auto it: sideRefCounts) {
-           auto* obj = it.first;
-           auto* objContainer = obj->container();
-           if (objContainer == nullptr) continue;  // Permanent object.
-           int refCount;
-           // If object is in aggregated container - sum up RC for all elements.
-           if (objContainer->objectCount() != 1) {
-             RuntimeAssert(objContainer->frozen(), "Must be frozen aggregate");
-             ContainerHeader** subContainer = reinterpret_cast<ContainerHeader**>(objContainer + 1);
-             refCount = 0;
-             for (int i = 0; i < objContainer->objectCount(); ++i) {
-                 auto* componentObj = reinterpret_cast<ObjHeader*>((*subContainer) + 1);
-                 refCount += sideRefCounts[componentObj];
-                 subContainer++;
-               }
-           } else {
-             refCount = it.second;
-           }
-           RuntimeAssert(refCount <= objContainer->refCount(), "Must properly count inner refs");
-           if (refCount != objContainer->refCount()) {
-             COLLECTOR_LOG("for %p mismatched RC: %d vs %d, adding as possible root\n", obj, refCount, objContainer->refCount())
-             toVisit.push_back(it.first);
-           }
-         }
-         visited.clear();
-         while (toVisit.size() > 0)  {
-           auto* obj = toVisit.front();
-           toVisit.pop_front();
-           auto* objContainer = obj->container();
-           if (objContainer == nullptr) continue;  // Permanent object.
-           RuntimeCheck(objContainer->shareable(), "Must be shareable");
-           sideRefCounts[obj] = -1;
-           visited.insert(obj);
-           if (atomicGet(&mutatedAtomics_) != 0) {
-             COLLECTOR_LOG("restarted during reachable visit\n")
-             restartCount++;
-             goto restart;
-           }
-           traverseObjectFields(obj, [&toVisit, &visited](ObjHeader** location) {
-              ObjHeader* ref = *location;
-              if (ref != nullptr && (visited.count(ref) == 0)) {
-                toVisit.push_back(ref);
-              }
-           });
-         }
-         // Now release all atomic roots with matching reference counters, as only their destruction is controlled.
-         for (auto it: sideRefCounts) {
-           auto* obj = it.first;
-           // Only do that for atomic rootset elements. For them we also do not have sum up references from
-           // other elements of an aggregate, as atomic references are always in single object containers.
-           if (!isAtomicReference(obj)) {
-             continue;
-           }
-           if (atomicGet(&mutatedAtomics_) != 0) {
-             COLLECTOR_LOG("restarted during matching check\n")
-             restartCount++;
-             goto restart;
-           }
-           auto* objContainer = obj->container();
-           if (!objContainer->frozen()) continue;
-           RuntimeAssert(objContainer->objectCount() == 1, "Must be single object");
-           COLLECTOR_LOG("for %p inner %d actual %d\n", obj, it.second, objContainer->refCount());
-           // All references are inner. We compare the number of counted
-           // inner references with the number of non-stack references and per-thread ownership value
-           // (see rememberNewContainer()).
-           if (it.second == objContainer->refCount()) {
-             COLLECTOR_LOG("adding %p to release candidates\n", it.first);
-             toRelease_.insert(it.first);
-           }
-         }
-         if (toRelease_.size() > 0)
-           atomicSet(&pendingRelease_, 1);
-         atomicSet(&gcRunning_, 0);
-         shallRunCollector_ = false;
-         COLLECTOR_LOG("end cycle GC\n");
-       }
-     }
-     atomicSet(&terminateCollector_, false);
-  }
-
-  void addWorker(void* worker) {
-    suggestLockRelease();
-    Locker lock(&lock_);
-    currentAliveWorkers_++;
-    if (mainWorker_ == nullptr) mainWorker_ = worker;
-  }
-
-  void removeWorker(void* worker, bool enabled) {
-    suggestLockRelease();
-    Locker lock(&lock_);
-    // When exiting the worker - we shall collect the cyclic garbage here.
-    if (enabled) {
-      shallRunCollector_ = true;
-      CHECK_CALL(pthread_cond_signal(&cond_), "Cannot signal collector")
+                atomicSet(&mutatedAtomics_, 0);
+                visited.clear();
+                toVisit.clear();
+                sideRefCounts.clear();
+                for (auto* root : rootset_) {
+                    // We only care about frozen values here, as only they could become part of shared cycles.
+                    if (!root->container()->frozen())
+                        continue;
+                    COLLECTOR_LOG("process root %p\n", root);
+                    toVisit.push_back(root);
+                    sideRefCounts[root] = 0;
+                }
+                while (toVisit.size() > 0) {
+                    if (atomicGet(&mutatedAtomics_) != 0) {
+                        COLLECTOR_LOG("restarted during rootset visit\n")
+                        restartCount++;
+                        goto restart;
+                    }
+                    auto* obj = toVisit.front();
+                    toVisit.pop_front();
+                    COLLECTOR_LOG("visit %s%p\n", isAtomicReference(obj) ? "atomic " : "", obj);
+                    auto* objContainer = obj->container();
+                    if (objContainer == nullptr)
+                        continue; // Permanent object.
+                    RuntimeCheck(objContainer->shareable(), "Must be shareable");
+                    if (visited.count(obj) == 0) {
+                        visited.insert(obj);
+                        traverseObjectFields(obj, [&toVisit, obj, &sideRefCounts](ObjHeader** location) {
+                            ObjHeader* ref = *location;
+                            if (ref != nullptr) {
+                                COLLECTOR_LOG("object field %p in %p\n", ref, obj)
+                                int increment;
+                                // We shall not account for edges inside the same frozen container, unless it originates
+                                // from an atomic reference.
+                                if (isAtomicReference(obj) || (obj->container() != ref->container())) {
+                                    COLLECTOR_LOG("counting %p -> %p\n", obj, ref)
+                                    increment = 1;
+                                } else {
+                                    COLLECTOR_LOG("not counting %p -> %p\n", obj, ref)
+                                    increment = 0;
+                                }
+                                sideRefCounts[ref] += increment;
+                                toVisit.push_back(ref);
+                            }
+                        });
+                    }
+                }
+                // Now find all elements with external references, and mark objects reachable from them as non suitable
+                // for collection by setting their side reference count to -1.
+                toVisit.clear();
+                for (auto it : sideRefCounts) {
+                    auto* obj = it.first;
+                    auto* objContainer = obj->container();
+                    if (objContainer == nullptr)
+                        continue; // Permanent object.
+                    int refCount;
+                    // If object is in aggregated container - sum up RC for all elements.
+                    if (objContainer->objectCount() != 1) {
+                        RuntimeAssert(objContainer->frozen(), "Must be frozen aggregate");
+                        ContainerHeader** subContainer = reinterpret_cast<ContainerHeader**>(objContainer + 1);
+                        refCount = 0;
+                        for (int i = 0; i < objContainer->objectCount(); ++i) {
+                            auto* componentObj = reinterpret_cast<ObjHeader*>((*subContainer) + 1);
+                            refCount += sideRefCounts[componentObj];
+                            subContainer++;
+                        }
+                    } else {
+                        refCount = it.second;
+                    }
+                    RuntimeAssert(refCount <= objContainer->refCount(), "Must properly count inner refs");
+                    if (refCount != objContainer->refCount()) {
+                        COLLECTOR_LOG(
+                            "for %p mismatched RC: %d vs %d, adding as possible root\n", obj, refCount,
+                            objContainer->refCount())
+                        toVisit.push_back(it.first);
+                    }
+                }
+                visited.clear();
+                while (toVisit.size() > 0) {
+                    auto* obj = toVisit.front();
+                    toVisit.pop_front();
+                    auto* objContainer = obj->container();
+                    if (objContainer == nullptr)
+                        continue; // Permanent object.
+                    RuntimeCheck(objContainer->shareable(), "Must be shareable");
+                    sideRefCounts[obj] = -1;
+                    visited.insert(obj);
+                    if (atomicGet(&mutatedAtomics_) != 0) {
+                        COLLECTOR_LOG("restarted during reachable visit\n")
+                        restartCount++;
+                        goto restart;
+                    }
+                    traverseObjectFields(obj, [&toVisit, &visited](ObjHeader** location) {
+                        ObjHeader* ref = *location;
+                        if (ref != nullptr && (visited.count(ref) == 0)) {
+                            toVisit.push_back(ref);
+                        }
+                    });
+                }
+                // Now release all atomic roots with matching reference counters, as only their destruction is
+                // controlled.
+                for (auto it : sideRefCounts) {
+                    auto* obj = it.first;
+                    // Only do that for atomic rootset elements. For them we also do not have sum up references from
+                    // other elements of an aggregate, as atomic references are always in single object containers.
+                    if (!isAtomicReference(obj)) {
+                        continue;
+                    }
+                    if (atomicGet(&mutatedAtomics_) != 0) {
+                        COLLECTOR_LOG("restarted during matching check\n")
+                        restartCount++;
+                        goto restart;
+                    }
+                    auto* objContainer = obj->container();
+                    if (!objContainer->frozen())
+                        continue;
+                    RuntimeAssert(objContainer->objectCount() == 1, "Must be single object");
+                    COLLECTOR_LOG("for %p inner %d actual %d\n", obj, it.second, objContainer->refCount());
+                    // All references are inner. We compare the number of counted
+                    // inner references with the number of non-stack references and per-thread ownership value
+                    // (see rememberNewContainer()).
+                    if (it.second == objContainer->refCount()) {
+                        COLLECTOR_LOG("adding %p to release candidates\n", it.first);
+                        toRelease_.insert(it.first);
+                    }
+                }
+                if (toRelease_.size() > 0)
+                    atomicSet(&pendingRelease_, 1);
+                atomicSet(&gcRunning_, 0);
+                shallRunCollector_ = false;
+                COLLECTOR_LOG("end cycle GC\n");
+            }
+        }
+        atomicSet(&terminateCollector_, false);
     }
-    currentAliveWorkers_--;
-  }
 
-  void addRoot(ObjHeader* obj) {
-    COLLECTOR_LOG("add root %p\n", obj);
-    // TODO: we can only add root when collector is not processing, which looks like a limitation,
-    //  instead we can add elements to the side buffer or have a separate lock for that.
-    suggestLockRelease();
-    Locker lock(&lock_);
-    rootset_.insert(obj);
-  }
+    void addWorker(void* worker) {
+        suggestLockRelease();
+        Locker lock(&lock_);
+        currentAliveWorkers_++;
+        if (mainWorker_ == nullptr)
+            mainWorker_ = worker;
+    }
 
-  void removeRoot(ObjHeader* obj) {
-    COLLECTOR_LOG("remove root %p\n", obj);
-    // Note that we can only remove root when the collector is not processing.
-    suggestLockRelease();
-    Locker lock(&lock_);
-    toRelease_.erase(obj);
-    rootset_.erase(obj);
-  }
+    void removeWorker(void* worker, bool enabled) {
+        suggestLockRelease();
+        Locker lock(&lock_);
+        // When exiting the worker - we shall collect the cyclic garbage here.
+        if (enabled) {
+            shallRunCollector_ = true;
+            CHECK_CALL(pthread_cond_signal(&cond_), "Cannot signal collector")
+        }
+        currentAliveWorkers_--;
+    }
 
-  void mutateRoot(ObjHeader* newValue) {
-    // TODO: consider optimization, when clearing value (setting to null) in atomic reference shall not lead
-    //   to invalidation of the collector analysis state.
-    atomicSet(&mutatedAtomics_, 1);
-  }
+    void addRoot(ObjHeader* obj) {
+        COLLECTOR_LOG("add root %p\n", obj);
+        // TODO: we can only add root when collector is not processing, which looks like a limitation,
+        //  instead we can add elements to the side buffer or have a separate lock for that.
+        suggestLockRelease();
+        Locker lock(&lock_);
+        rootset_.insert(obj);
+    }
 
-  void suggestLockRelease() {
-    atomicSet(&mutatedAtomics_, 1);
-  }
+    void removeRoot(ObjHeader* obj) {
+        COLLECTOR_LOG("remove root %p\n", obj);
+        // Note that we can only remove root when the collector is not processing.
+        suggestLockRelease();
+        Locker lock(&lock_);
+        toRelease_.erase(obj);
+        rootset_.erase(obj);
+    }
 
-  bool checkIfShallCollect() {
-    auto tick = atomicAdd(&currentTick_, 1);
-    auto delta = tick - atomicGet(&lastTick_);
-    if (delta > 10 || delta < 0) {
-      auto currentTimestampUs = konan::getTimeMicros();
+    void mutateRoot(ObjHeader* newValue) {
+        // TODO: consider optimization, when clearing value (setting to null) in atomic reference shall not lead
+        //   to invalidation of the collector analysis state.
+        atomicSet(&mutatedAtomics_, 1);
+    }
+
+    void suggestLockRelease() { atomicSet(&mutatedAtomics_, 1); }
+
+    bool checkIfShallCollect() {
+        auto tick = atomicAdd(&currentTick_, 1);
+        auto delta = tick - atomicGet(&lastTick_);
+        if (delta > 10 || delta < 0) {
+            auto currentTimestampUs = konan::getTimeMicros();
 #if KONAN_NO_64BIT_ATOMIC
-      if (currentTimestampUs - *(volatile int64_t*)&lastTimestampUs_ > 10000) {
+            if (currentTimestampUs - *(volatile int64_t*)&lastTimestampUs_ > 10000) {
 #else
-      if (currentTimestampUs - atomicGet(&lastTimestampUs_) > 10000) {
-#endif  // KONAN_NO_64BIT_ATOMIC
-        // Do we care if this lock is not here?
-        Locker locker(&timestampLock_);
-        lastTick_ = currentTick_;
-        lastTimestampUs_ = currentTimestampUs;
-        return true;
-      }
+            if (currentTimestampUs - atomicGet(&lastTimestampUs_) > 10000) {
+#endif // KONAN_NO_64BIT_ATOMIC
+       // Do we care if this lock is not here?
+                Locker locker(&timestampLock_);
+                lastTick_ = currentTick_;
+                lastTimestampUs_ = currentTimestampUs;
+                return true;
+            }
+        }
+        return false;
     }
-    return false;
-  }
 
-  void releasePendingUnlocked(void* worker) {
-    // We are not doing that on the UI thread, as taking lock is slow, unless
-    // it happens on deinit of the collector or if there are no other workers.
-    if ((atomicGet(&pendingRelease_) != 0) && ((worker != mainWorker_) || (currentAliveWorkers_ == 1))) {
-      suggestLockRelease();
-      Locker locker(&lock_);
-      COLLECTOR_LOG("clearing %d release candidates on %p\n", toRelease_.size(), worker);
-      for (auto* it: toRelease_) {
-        COLLECTOR_LOG("clear references in %p\n", it)
-        traverseObjectFields(it, [](ObjHeader** location) {
-          ZeroHeapRef(location);
-        });
-      }
-      toRelease_.clear();
-      atomicSet(&pendingRelease_, 0);
+    void releasePendingUnlocked(void* worker) {
+        // We are not doing that on the UI thread, as taking lock is slow, unless
+        // it happens on deinit of the collector or if there are no other workers.
+        if ((atomicGet(&pendingRelease_) != 0) && ((worker != mainWorker_) || (currentAliveWorkers_ == 1))) {
+            suggestLockRelease();
+            Locker locker(&lock_);
+            COLLECTOR_LOG("clearing %d release candidates on %p\n", toRelease_.size(), worker);
+            for (auto* it : toRelease_) {
+                COLLECTOR_LOG("clear references in %p\n", it)
+                traverseObjectFields(it, [](ObjHeader** location) { ZeroHeapRef(location); });
+            }
+            toRelease_.clear();
+            atomicSet(&pendingRelease_, 0);
+        }
     }
-  }
 
-  void collectorCallaback(void* worker) {
-    if (atomicGet(&gcRunning_) != 0) return;
-    releasePendingUnlocked(worker);
-    if (checkIfShallCollect()) {
-      Locker locker(&lock_);
-      shallRunCollector_ = true;
-      CHECK_CALL(pthread_cond_signal(&cond_), "Cannot signal collector")
+    void collectorCallaback(void* worker) {
+        if (atomicGet(&gcRunning_) != 0)
+            return;
+        releasePendingUnlocked(worker);
+        if (checkIfShallCollect()) {
+            Locker locker(&lock_);
+            shallRunCollector_ = true;
+            CHECK_CALL(pthread_cond_signal(&cond_), "Cannot signal collector")
+        }
     }
-  }
 
-  void scheduleGarbageCollect() {
-    if (atomicGet(&gcRunning_) != 0) return;
-    Locker lock(&lock_);
-    shallRunCollector_ = true;
-    CHECK_CALL(pthread_cond_signal(&cond_), "Cannot signal collector")
-  }
+    void scheduleGarbageCollect() {
+        if (atomicGet(&gcRunning_) != 0)
+            return;
+        Locker lock(&lock_);
+        shallRunCollector_ = true;
+        CHECK_CALL(pthread_cond_signal(&cond_), "Cannot signal collector")
+    }
 
-  void localGC() {
-    // We just need to take GC lock here, to avoid release of object we walk on.
-    // TODO: consider optimization without taking the lock and just notifying collector via an atomic.
-    suggestLockRelease();
-    Locker locker(&lock_);
-  }
-
+    void localGC() {
+        // We just need to take GC lock here, to avoid release of object we walk on.
+        // TODO: consider optimization without taking the lock and just notifying collector via an atomic.
+        suggestLockRelease();
+        Locker locker(&lock_);
+    }
 };
 
 CyclicCollector* cyclicCollector = nullptr;
 
-}  // namespace
+} // namespace
 
-#endif  // WITH_WORKERS
+#endif // WITH_WORKERS
 
 void cyclicInit() {
 #if WITH_WORKERS
-  RuntimeAssert(cyclicCollector == nullptr, "Must be not yet inited");
-  cyclicCollector = konanConstructInstance<CyclicCollector>();
+    RuntimeAssert(cyclicCollector == nullptr, "Must be not yet inited");
+    cyclicCollector = konanConstructInstance<CyclicCollector>();
 #endif
 }
 
 void cyclicDeinit(bool enabled) {
 #if WITH_WORKERS
-  RuntimeAssert(cyclicCollector != nullptr, "Must be inited");
-  auto* local = cyclicCollector;
-  local->terminate(enabled);
-  cyclicCollector = nullptr;
-  // Workaround data race with threads non-atomically reading and then using [cyclicCollector].
-  // konanDestructInstance(local);
-  // Note: memory leaks here indeed, but usually it happens once per application.
-  // Make best effort to clean some memory:
-  local->clear();
-#endif  // WITH_WORKERS
+    RuntimeAssert(cyclicCollector != nullptr, "Must be inited");
+    auto* local = cyclicCollector;
+    local->terminate(enabled);
+    cyclicCollector = nullptr;
+    // Workaround data race with threads non-atomically reading and then using [cyclicCollector].
+    // konanDestructInstance(local);
+    // Note: memory leaks here indeed, but usually it happens once per application.
+    // Make best effort to clean some memory:
+    local->clear();
+#endif // WITH_WORKERS
 }
 
 void cyclicAddWorker(void* worker) {
 #if WITH_WORKERS
-  auto* local = cyclicCollector;
-  if (local)
-    local->addWorker(worker);
-#endif  // WITH_WORKERS
+    auto* local = cyclicCollector;
+    if (local)
+        local->addWorker(worker);
+#endif // WITH_WORKERS
 }
 
 void cyclicRemoveWorker(void* worker, bool enabled) {
 #if WITH_WORKERS
-  auto* local = cyclicCollector;
-  if (local)
-    local->removeWorker(worker, enabled);
-#endif  // WITH_WORKERS
+    auto* local = cyclicCollector;
+    if (local)
+        local->removeWorker(worker, enabled);
+#endif // WITH_WORKERS
 }
 
 void cyclicCollectorCallback(void* worker) {
 #if WITH_WORKERS
-  auto* local = cyclicCollector;
-  if (local)
-    local->collectorCallaback(worker);
-#endif  // WITH_WORKERS
+    auto* local = cyclicCollector;
+    if (local)
+        local->collectorCallaback(worker);
+#endif // WITH_WORKERS
 }
 
 void cyclicScheduleGarbageCollect() {
 #if WITH_WORKERS
-  auto* local = cyclicCollector;
-  if (local)
-    local->scheduleGarbageCollect();
-#endif  // WITH_WORKERS
+    auto* local = cyclicCollector;
+    if (local)
+        local->scheduleGarbageCollect();
+#endif // WITH_WORKERS
 }
 
 void cyclicAddAtomicRoot(ObjHeader* obj) {
 #if WITH_WORKERS
-  auto* local = cyclicCollector;
-  if (local)
-    local->addRoot(obj);
-#endif  // WITH_WORKERS
+    auto* local = cyclicCollector;
+    if (local)
+        local->addRoot(obj);
+#endif // WITH_WORKERS
 }
 
 void cyclicRemoveAtomicRoot(ObjHeader* obj) {
 #if WITH_WORKERS
-  auto* local = cyclicCollector;
-  if (local)
-    local->removeRoot(obj);
-#endif  // WITH_WORKERS
+    auto* local = cyclicCollector;
+    if (local)
+        local->removeRoot(obj);
+#endif // WITH_WORKERS
 }
 
 void cyclicMutateAtomicRoot(ObjHeader* newValue) {
 #if WITH_WORKERS
-  auto* local = cyclicCollector;
-  if (local)
-    local->mutateRoot(newValue);
-#endif  // WITH_WORKERS
+    auto* local = cyclicCollector;
+    if (local)
+        local->mutateRoot(newValue);
+#endif // WITH_WORKERS
 }
 
 void cyclicLocalGC() {
 #if WITH_WORKERS
-  auto* local = cyclicCollector;
-  if (local)
-    local->localGC();
-#endif  // WITH_WORKERS
+    auto* local = cyclicCollector;
+    if (local)
+        local->localGC();
+#endif // WITH_WORKERS
 }

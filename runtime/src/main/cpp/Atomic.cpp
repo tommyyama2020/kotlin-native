@@ -25,40 +25,40 @@
 namespace {
 
 struct AtomicReferenceLayout {
-  ObjHeader header;
-  KRef value_;
-  KInt lock_;
-  KInt cookie_;
+    ObjHeader header;
+    KRef value_;
+    KInt lock_;
+    KInt cookie_;
 };
 
-template<typename T> struct AtomicPrimitive {
-  ObjHeader header;
-  volatile T value_;
+template <typename T> struct AtomicPrimitive {
+    ObjHeader header;
+    volatile T value_;
 };
 
 template <typename T> inline volatile T* getValueLocation(KRef thiz) {
-  AtomicPrimitive<T>* atomic = reinterpret_cast<AtomicPrimitive<T>*>(thiz);
-  return &atomic->value_;
+    AtomicPrimitive<T>* atomic = reinterpret_cast<AtomicPrimitive<T>*>(thiz);
+    return &atomic->value_;
 }
 
 template <typename T> void setImpl(KRef thiz, T value) {
-  volatile T* location = getValueLocation<T>(thiz);
-  atomicSet(location, value);
+    volatile T* location = getValueLocation<T>(thiz);
+    atomicSet(location, value);
 }
 
 template <typename T> T getImpl(KRef thiz) {
-  volatile T* location = getValueLocation<T>(thiz);
-  return atomicGet(location);
+    volatile T* location = getValueLocation<T>(thiz);
+    return atomicGet(location);
 }
 
 template <typename T> T addAndGetImpl(KRef thiz, T delta) {
-  volatile T* location = getValueLocation<T>(thiz);
-  return atomicAdd(location, delta);
+    volatile T* location = getValueLocation<T>(thiz);
+    return atomicAdd(location, delta);
 }
 
 template <typename T> T compareAndSwapImpl(KRef thiz, T expectedValue, T newValue) {
-  volatile T* location = getValueLocation<T>(thiz);
-  return compareAndSwap(location, expectedValue, newValue);
+    volatile T* location = getValueLocation<T>(thiz);
+    return compareAndSwap(location, expectedValue, newValue);
 }
 
 template <typename T> KBoolean compareAndSetImpl(KRef thiz, T expectedValue, T newValue) {
@@ -70,7 +70,7 @@ inline AtomicReferenceLayout* asAtomicReference(KRef thiz) {
     return reinterpret_cast<AtomicReferenceLayout*>(thiz);
 }
 
-}  // namespace
+} // namespace
 
 extern "C" {
 
@@ -105,11 +105,12 @@ static int lock64 = 0;
 KLong Kotlin_AtomicLong_compareAndSwap(KRef thiz, KLong expectedValue, KLong newValue) {
 #if KONAN_NO_64BIT_ATOMIC
     // Potentially huge performance penalty, but correct.
-    while (compareAndSwap(&lock64, 0, 1) != 0);
+    while (compareAndSwap(&lock64, 0, 1) != 0)
+        ;
     volatile KLong* address = getValueLocation<KLong>(thiz);
     KLong old = *address;
     if (old == expectedValue) {
-      *address = newValue;
+        *address = newValue;
     }
     compareAndSwap(&lock64, 1, 0);
     return old;
@@ -122,12 +123,13 @@ KBoolean Kotlin_AtomicLong_compareAndSet(KRef thiz, KLong expectedValue, KLong n
 #if KONAN_NO_64BIT_ATOMIC
     // Potentially huge performance penalty, but correct.
     KBoolean result = false;
-    while (compareAndSwap(&lock64, 0, 1) != 0);
+    while (compareAndSwap(&lock64, 0, 1) != 0)
+        ;
     volatile KLong* address = getValueLocation<KLong>(thiz);
     KLong old = *address;
     if (old == expectedValue) {
-      result = true;
-      *address = newValue;
+        result = true;
+        *address = newValue;
     }
     compareAndSwap(&lock64, 1, 0);
     return result;
@@ -139,7 +141,8 @@ KBoolean Kotlin_AtomicLong_compareAndSet(KRef thiz, KLong expectedValue, KLong n
 void Kotlin_AtomicLong_set(KRef thiz, KLong newValue) {
 #if KONAN_NO_64BIT_ATOMIC
     // Potentially huge performance penalty, but correct.
-    while (compareAndSwap(&lock64, 0, 1) != 0);
+    while (compareAndSwap(&lock64, 0, 1) != 0)
+        ;
     volatile KLong* address = getValueLocation<KLong>(thiz);
     *address = newValue;
     compareAndSwap(&lock64, 1, 0);
@@ -151,7 +154,8 @@ void Kotlin_AtomicLong_set(KRef thiz, KLong newValue) {
 KLong Kotlin_AtomicLong_get(KRef thiz) {
 #if KONAN_NO_64BIT_ATOMIC
     // Potentially huge performance penalty, but correct.
-    while (compareAndSwap(&lock64, 0, 1) != 0);
+    while (compareAndSwap(&lock64, 0, 1) != 0)
+        ;
     volatile KLong* address = getValueLocation<KLong>(thiz);
     KLong value = *address;
     compareAndSwap(&lock64, 1, 0);
@@ -187,8 +191,7 @@ OBJ_GETTER(Kotlin_AtomicReference_compareAndSwap, KRef thiz, KRef expectedValue,
     Kotlin_AtomicReference_checkIfFrozen(newValue);
     // See Kotlin_AtomicReference_get() for explanations, why locking is needed.
     AtomicReferenceLayout* ref = asAtomicReference(thiz);
-    RETURN_RESULT_OF(SwapHeapRefLocked, &ref->value_, expectedValue, newValue,
-        &ref->lock_, &ref->cookie_);
+    RETURN_RESULT_OF(SwapHeapRefLocked, &ref->value_, expectedValue, newValue, &ref->lock_, &ref->cookie_);
 }
 
 KBoolean Kotlin_AtomicReference_compareAndSet(KRef thiz, KRef expectedValue, KRef newValue) {
@@ -196,8 +199,7 @@ KBoolean Kotlin_AtomicReference_compareAndSet(KRef thiz, KRef expectedValue, KRe
     // See Kotlin_AtomicReference_get() for explanations, why locking is needed.
     AtomicReferenceLayout* ref = asAtomicReference(thiz);
     ObjHolder holder;
-    auto old = SwapHeapRefLocked(&ref->value_, expectedValue, newValue,
-        &ref->lock_, &ref->cookie_, holder.slot());
+    auto old = SwapHeapRefLocked(&ref->value_, expectedValue, newValue, &ref->lock_, &ref->cookie_, holder.slot());
     return old == expectedValue;
 }
 
@@ -216,4 +218,4 @@ OBJ_GETTER(Kotlin_AtomicReference_get, KRef thiz) {
     RETURN_RESULT_OF(ReadHeapRefLocked, &ref->value_, &ref->lock_, &ref->cookie_);
 }
 
-}  // extern "C"
+} // extern "C"

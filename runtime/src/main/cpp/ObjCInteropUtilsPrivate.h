@@ -12,8 +12,8 @@
 
 #import <objc/runtime.h>
 
-#import "Types.h"
 #import "Memory.h"
+#import "Types.h"
 
 extern "C" id (*Kotlin_Interop_createKotlinObjectHolder_ptr)(KRef any);
 extern "C" KRef (*Kotlin_Interop_unwrapKotlinObjectHolder_ptr)(id holder);

@@ -18,12 +18,12 @@
 
 #include <limits.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "KAssert.h"
 #include "Exceptions.h"
+#include "KAssert.h"
 #include "Memory.h"
 #include "Natives.h"
 #include "Types.h"
@@ -32,52 +32,52 @@ extern "C" {
 
 // Any.kt
 KBoolean Kotlin_Any_equals(KConstRef thiz, KConstRef other) {
-  return thiz == other;
+    return thiz == other;
 }
 
 KInt Kotlin_Any_hashCode(KConstRef thiz) {
-  // Here we will use different mechanism for stable hashcode, using meta-objects
-  // if moving collector will be used.
-  return reinterpret_cast<uintptr_t>(thiz);
+    // Here we will use different mechanism for stable hashcode, using meta-objects
+    // if moving collector will be used.
+    return reinterpret_cast<uintptr_t>(thiz);
 }
 
 OBJ_GETTER(Kotlin_getStackTraceStrings, KConstRef stackTrace) {
-  RETURN_RESULT_OF(GetStackTraceStrings, stackTrace);
+    RETURN_RESULT_OF(GetStackTraceStrings, stackTrace);
 }
 
 // TODO: consider handling it with compiler magic instead.
 OBJ_GETTER0(Kotlin_native_internal_undefined) {
-  RETURN_OBJ(nullptr);
+    RETURN_OBJ(nullptr);
 }
 
 void* Kotlin_interop_malloc(KLong size, KInt align) {
-  if (size > SIZE_MAX) {
-    return nullptr;
-  }
+    if (size > SIZE_MAX) {
+        return nullptr;
+    }
 
-  void* result = konan::calloc(1, size);
-  if ((reinterpret_cast<uintptr_t>(result) & (align - 1)) != 0) {
-    // Unaligned!
-    RuntimeAssert(false, "unsupported alignment");
-  }
+    void* result = konan::calloc(1, size);
+    if ((reinterpret_cast<uintptr_t>(result) & (align - 1)) != 0) {
+        // Unaligned!
+        RuntimeAssert(false, "unsupported alignment");
+    }
 
-  return result;
+    return result;
 }
 
 void Kotlin_interop_free(void* ptr) {
-  konan::free(ptr);
+    konan::free(ptr);
 }
 
 void Kotlin_system_exitProcess(KInt status) {
-  konan::exit(status);
+    konan::exit(status);
 }
 
 const void* Kotlin_Any_getTypeInfo(KConstRef obj) {
-  return obj->type_info();
+    return obj->type_info();
 }
 
 void Kotlin_CPointer_CopyMemory(KNativePtr to, KNativePtr from, KInt count) {
-  memcpy(to, from, count);
+    memcpy(to, from, count);
 }
 
-}  // extern "C"
+} // extern "C"
