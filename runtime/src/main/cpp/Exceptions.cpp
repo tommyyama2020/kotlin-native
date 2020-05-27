@@ -19,6 +19,8 @@
 #include <stdint.h>
 
 #include <exception>
+#include <atomic>
+#include <unistd.h>
 
 #if KONAN_NO_EXCEPTIONS
 #define OMIT_BACKTRACE 1
@@ -113,8 +115,6 @@ SourceInfo getSourceInfo(KConstRef stackTrace, int index) {
 
 }  // namespace
 
-extern "C" {
-
 // TODO: this implementation is just a hack, e.g. the result is inexact;
 // however it is better to have an inexact stacktrace than not to have any.
 NO_INLINE OBJ_GETTER0(Kotlin_getCurrentStackTrace) {
@@ -133,14 +133,14 @@ NO_INLINE OBJ_GETTER0(Kotlin_getCurrentStackTrace) {
   RETURN_OBJ(result.obj());
 #else
   const int maxSize = 32;
-  void* buffer[maxSize];
+  void *buffer[maxSize];
 
   int size = backtrace(buffer, maxSize);
   if (size < kSkipFrames)
-      return AllocArrayInstance(theNativePtrArrayTypeInfo, 0, OBJ_RESULT);
+    return AllocArrayInstance(theNativePtrArrayTypeInfo, 0, OBJ_RESULT);
 
   ObjHolder resultHolder;
-  ObjHeader* result = AllocArrayInstance(theNativePtrArrayTypeInfo, size - kSkipFrames, resultHolder.slot());
+  ObjHeader *result = AllocArrayInstance(theNativePtrArrayTypeInfo, size - kSkipFrames, resultHolder.slot());
   for (int index = kSkipFrames; index < size; ++index) {
     Kotlin_NativePtrArray_set(result, index - kSkipFrames, buffer[index]);
   }
@@ -159,7 +159,7 @@ OBJ_GETTER(GetStackTraceStrings, KConstRef stackTrace) {
 #else
   uint32_t size = stackTrace->array()->count_;
   ObjHolder resultHolder;
-  ObjHeader* strings = AllocArrayInstance(theArrayTypeInfo, size, resultHolder.slot());
+  ObjHeader *strings = AllocArrayInstance(theArrayTypeInfo, size, resultHolder.slot());
 #if USE_GCC_UNWIND
   for (int index = 0; index < size; ++index) {
     KNativePtr address = Kotlin_NativePtrArray_get(stackTrace, index);
@@ -180,9 +180,15 @@ OBJ_GETTER(GetStackTraceStrings, KConstRef stackTrace) {
     RuntimeCheck(symbols != nullptr, "Not enough memory to retrieve the stacktrace");
 
     for (int index = 0; index < size; ++index) {
+<<<<<<< HEAD
       auto sourceInfo = getSourceInfo(stackTrace, index);
       const char* symbol = symbols[index];
       const char* result;
+=======
+      auto sourceInfo = Kotlin_getSourceInfo(*PrimitiveArrayAddressOfElementAt<KNativePtr>(stackTrace->array(), index));
+      const char *symbol = symbols[index];
+      const char *result;
+>>>>>>> [runtime] Fix possible race in terminate handler
       char line[1024];
       if (sourceInfo.fileName != nullptr) {
         if (sourceInfo.lineNumber != -1) {
@@ -220,14 +226,16 @@ void ThrowException(KRef exception) {
 
 OBJ_GETTER(Kotlin_setUnhandledExceptionHook, KRef hook) {
   RETURN_RESULT_OF(SwapHeapRefLocked,
-    &currentUnhandledExceptionHook, currentUnhandledExceptionHook, hook, &currentUnhandledExceptionHookLock,
-    &currentUnhandledExceptionHookCookie);
+                   &currentUnhandledExceptionHook, currentUnhandledExceptionHook, hook,
+                   &currentUnhandledExceptionHookLock,
+                   &currentUnhandledExceptionHookCookie);
 }
 
 void OnUnhandledException(KRef throwable) {
   ObjHolder handlerHolder;
-  auto* handler = SwapHeapRefLocked(&currentUnhandledExceptionHook, currentUnhandledExceptionHook, nullptr,
-     &currentUnhandledExceptionHookLock,  &currentUnhandledExceptionHookCookie, handlerHolder.slot());
+  auto *handler = SwapHeapRefLocked(&currentUnhandledExceptionHook, currentUnhandledExceptionHook, nullptr,
+                                    &currentUnhandledExceptionHookLock, &currentUnhandledExceptionHookCookie,
+                                    handlerHolder.slot());
   if (handler == nullptr) {
     ReportUnhandledException(throwable);
   } else {
@@ -235,72 +243,105 @@ void OnUnhandledException(KRef throwable) {
   }
 }
 
+namespace {
+
+class {
+    /**
+     * Timeout 5 sec for concurrent (second) terminate attempt to give a chance the first one to finish.
+     * If the terminate handler hangs for 5 sec it is probably fatally broken, so let's do abnormal _Exit in that case.
+     */
+    unsigned int timeout = 5;
+    std::atomic_flag terminatingFlag = ATOMIC_FLAG_INIT;
+  public:
+    template <class Fun> RUNTIME_NORETURN void operator()(Fun block) {
+      if (!terminatingFlag.test_and_set()) {
+        block();
+        // block() is supposed to be NORETURN, otherwise go to normal abort()
+        konan::abort();
+      } else {
+        sleep(timeout);
+        // We come here when another terminate handler hangs for 5 sec, that looks fatally broken. Go to forced exit now.
+      }
+      _Exit(EXIT_FAILURE); // force exit
+    }
+} concurrentTerminateWrapper;
+
+void reportUnhandledException(KRef throwable) {
+  OnUnhandledException(throwable);
 #if KONAN_REPORT_BACKTRACE_TO_IOS_CRASH_LOG
-static bool terminating = false;
-static SimpleMutex terminatingMutex;
+  ReportBacktraceToIosCrashLog(throwable);
 #endif
+}
+
+}
 
 RUNTIME_NORETURN void TerminateWithUnhandledException(KRef throwable) {
-  OnUnhandledException(throwable);
-
-#if KONAN_REPORT_BACKTRACE_TO_IOS_CRASH_LOG
-  {
-    LockGuard<SimpleMutex> lock(terminatingMutex);
-    if (!terminating) {
-      ReportBacktraceToIosCrashLog(throwable);
-    }
-  }
-#endif
-
-  konan::abort();
+  concurrentTerminateWrapper([=]() {
+    reportUnhandledException(throwable);
+    konan::abort();
+  });
 }
 
 // Some libstdc++-based targets has limited support for std::current_exception and other C++11 functions.
 // This restriction can be lifted later when toolchains will be updated.
 #if KONAN_HAS_CXX11_EXCEPTION_FUNCTIONS
 
-static void (*oldTerminateHandler)() = nullptr;
+namespace {
+class TerminateHandler {
 
-static void callOldTerminateHandler() {
-#if KONAN_REPORT_BACKTRACE_TO_IOS_CRASH_LOG
-  {
-    LockGuard<SimpleMutex> lock(terminatingMutex);
-    terminating = true;
+	// In fact, it's safe to call my_handler directly from outside: it will do the job and then invoke original handler,
+	// even if it has not been initialized yet. So one may want to make it public and/or not the class member
+  RUNTIME_NORETURN static void kotlinHandler () {
+    concurrentTerminateWrapper([]() {
+        if (auto currentException = std::current_exception()) {
+          try {
+            std::rethrow_exception(currentException);
+          } catch (ExceptionObjHolder &e) {
+            reportUnhandledException(e.obj());
+            konan::abort();
+          } catch (...) {
+            // Not a Kotlin exception - pass throw to default handler
+          }
+        }
+       // Come here in case of direct terminate() call or unknown exception - go to default terminate handler.
+ 			instance()->queuedHandler_();
+    });
+	}
+
+  /// Use machinery like Meyers singleton to provide thread safety
+
+  typedef __attribute__((noreturn)) void (*QH)();
+  QH queuedHandler_;
+
+  TerminateHandler()
+    : queuedHandler_((QH)std::set_terminate(kotlinHandler)) {}
+
+  static TerminateHandler *instance() {
+    static TerminateHandler *singleton = new TerminateHandler();
+    return singleton;
   }
-#endif
 
-  RuntimeCheck(oldTerminateHandler != nullptr, "Underlying exception handler is not set.");
-  oldTerminateHandler();
-}
+	// Copy, move and assign would be safe, but not much useful, so let's delete all (rule of 5)
+	TerminateHandler(const TerminateHandler &) = delete;
+	TerminateHandler(TerminateHandler &&) = delete;
+	TerminateHandler &operator=(const TerminateHandler &) = delete;
+	TerminateHandler &operator=(TerminateHandler &&) = delete;
+	// Dtor might be in use to restore original handler. However, consequent install
+	// will not reconstruct handler anyway, so let's keep dtor deleted to avoid confusion.
+	~TerminateHandler() = delete;
+public:
+	/// First call will do the job, all consecuent will do nothing.
+	static void install() {
+		instance(); // Use side effect of warming up
+	}
+};
+} // anon namespace
 
-static void KonanTerminateHandler() {
-  auto currentException = std::current_exception();
-  if (!currentException) {
-    // No current exception.
-    callOldTerminateHandler();
-  } else {
-    try {
-      std::rethrow_exception(currentException);
-    } catch (ExceptionObjHolder& e) {
-      TerminateWithUnhandledException(e.obj());
-    } catch (...) {
-      // Not a Kotlin exception.
-      callOldTerminateHandler();
-    }
-  }
-}
-
-static SimpleMutex konanTerminateHandlerInitializationMutex;
-
+// Use one public funuction to limit access to the class declaration
 void SetKonanTerminateHandler() {
-  if (oldTerminateHandler != nullptr) return; // Already initialized.
-
-  LockGuard<SimpleMutex> lockGuard(konanTerminateHandlerInitializationMutex);
-
-  if (oldTerminateHandler != nullptr) return; // Already initialized.
-
-  oldTerminateHandler = std::set_terminate(&KonanTerminateHandler);
+	TerminateHandler::install();
 }
+
 
 #else // KONAN_OBJC_INTEROP
 
@@ -309,8 +350,6 @@ void SetKonanTerminateHandler() {
 }
 
 #endif // KONAN_OBJC_INTEROP
-
-} // extern "C"
 
 void DisallowSourceInfo() {
   disallowSourceInfo = true;
