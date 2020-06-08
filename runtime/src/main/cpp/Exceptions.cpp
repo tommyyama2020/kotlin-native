@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 #include <exception>
-#include <atomic>
 #include <unistd.h>
 
 #if KONAN_NO_EXCEPTIONS
@@ -133,14 +132,14 @@ NO_INLINE OBJ_GETTER0(Kotlin_getCurrentStackTrace) {
   RETURN_OBJ(result.obj());
 #else
   const int maxSize = 32;
-  void *buffer[maxSize];
+  void* buffer[maxSize];
 
   int size = backtrace(buffer, maxSize);
   if (size < kSkipFrames)
     return AllocArrayInstance(theNativePtrArrayTypeInfo, 0, OBJ_RESULT);
 
   ObjHolder resultHolder;
-  ObjHeader *result = AllocArrayInstance(theNativePtrArrayTypeInfo, size - kSkipFrames, resultHolder.slot());
+  ObjHeader* result = AllocArrayInstance(theNativePtrArrayTypeInfo, size - kSkipFrames, resultHolder.slot());
   for (int index = kSkipFrames; index < size; ++index) {
     Kotlin_NativePtrArray_set(result, index - kSkipFrames, buffer[index]);
   }
@@ -159,7 +158,7 @@ OBJ_GETTER(GetStackTraceStrings, KConstRef stackTrace) {
 #else
   uint32_t size = stackTrace->array()->count_;
   ObjHolder resultHolder;
-  ObjHeader *strings = AllocArrayInstance(theArrayTypeInfo, size, resultHolder.slot());
+  ObjHeader* strings = AllocArrayInstance(theArrayTypeInfo, size, resultHolder.slot());
 #if USE_GCC_UNWIND
   for (int index = 0; index < size; ++index) {
     KNativePtr address = Kotlin_NativePtrArray_get(stackTrace, index);
@@ -186,9 +185,14 @@ OBJ_GETTER(GetStackTraceStrings, KConstRef stackTrace) {
       const char* result;
 =======
       auto sourceInfo = Kotlin_getSourceInfo(*PrimitiveArrayAddressOfElementAt<KNativePtr>(stackTrace->array(), index));
+<<<<<<< HEAD
       const char *symbol = symbols[index];
       const char *result;
 >>>>>>> [runtime] Fix possible race in terminate handler
+=======
+      const char* symbol = symbols[index];
+      const char* result;
+>>>>>>> minor: PR feedback
       char line[1024];
       if (sourceInfo.fileName != nullptr) {
         if (sourceInfo.lineNumber != -1) {
@@ -226,16 +230,14 @@ void ThrowException(KRef exception) {
 
 OBJ_GETTER(Kotlin_setUnhandledExceptionHook, KRef hook) {
   RETURN_RESULT_OF(SwapHeapRefLocked,
-                   &currentUnhandledExceptionHook, currentUnhandledExceptionHook, hook,
-                   &currentUnhandledExceptionHookLock,
-                   &currentUnhandledExceptionHookCookie);
+    &currentUnhandledExceptionHook, currentUnhandledExceptionHook, hook, &currentUnhandledExceptionHookLock,
+    &currentUnhandledExceptionHookCookie);
 }
 
 void OnUnhandledException(KRef throwable) {
   ObjHolder handlerHolder;
-  auto *handler = SwapHeapRefLocked(&currentUnhandledExceptionHook, currentUnhandledExceptionHook, nullptr,
-                                    &currentUnhandledExceptionHookLock, &currentUnhandledExceptionHookCookie,
-                                    handlerHolder.slot());
+  auto* handler = SwapHeapRefLocked(&currentUnhandledExceptionHook, currentUnhandledExceptionHook, nullptr,
+     &currentUnhandledExceptionHookLock,  &currentUnhandledExceptionHookCookie, handlerHolder.slot());
   if (handler == nullptr) {
     ReportUnhandledException(throwable);
   } else {
@@ -250,16 +252,16 @@ class {
      * Timeout 5 sec for concurrent (second) terminate attempt to give a chance the first one to finish.
      * If the terminate handler hangs for 5 sec it is probably fatally broken, so let's do abnormal _Exit in that case.
      */
-    unsigned int timeout = 5;
-    std::atomic_flag terminatingFlag = ATOMIC_FLAG_INIT;
+    unsigned int timeoutSec = 5;
+    int terminatingFlag = 0;
   public:
     template <class Fun> RUNTIME_NORETURN void operator()(Fun block) {
-      if (!terminatingFlag.test_and_set()) {
+      if (!compareAndSet(&terminatingFlag, 0, 1)) {
         block();
         // block() is supposed to be NORETURN, otherwise go to normal abort()
         konan::abort();
       } else {
-        sleep(timeout);
+        sleep(timeoutSec);
         // We come here when another terminate handler hangs for 5 sec, that looks fatally broken. Go to forced exit now.
       }
       _Exit(EXIT_FAILURE); // force exit
@@ -273,7 +275,7 @@ void reportUnhandledException(KRef throwable) {
 #endif
 }
 
-}
+} // namespace
 
 RUNTIME_NORETURN void TerminateWithUnhandledException(KRef throwable) {
   concurrentTerminateWrapper([=]() {
@@ -291,41 +293,41 @@ class TerminateHandler {
 
 	// In fact, it's safe to call my_handler directly from outside: it will do the job and then invoke original handler,
 	// even if it has not been initialized yet. So one may want to make it public and/or not the class member
-  RUNTIME_NORETURN static void kotlinHandler () {
+  RUNTIME_NORETURN static void kotlinHandler() {
     concurrentTerminateWrapper([]() {
-        if (auto currentException = std::current_exception()) {
-          try {
-            std::rethrow_exception(currentException);
-          } catch (ExceptionObjHolder &e) {
-            reportUnhandledException(e.obj());
-            konan::abort();
-          } catch (...) {
-            // Not a Kotlin exception - pass throw to default handler
-          }
+      if (auto currentException = std::current_exception()) {
+        try {
+          std::rethrow_exception(currentException);
+        } catch (ExceptionObjHolder& e) {
+          reportUnhandledException(e.obj());
+          konan::abort();
+        } catch (...) {
+          // Not a Kotlin exception - call default handler
+          instance()->queuedHandler_();
         }
-       // Come here in case of direct terminate() call or unknown exception - go to default terminate handler.
- 			instance()->queuedHandler_();
+      }
+      // Come here in case of direct terminate() call or unknown exception - go to default terminate handler.
+      instance()->queuedHandler_();
     });
-	}
+  }
 
-  /// Use machinery like Meyers singleton to provide thread safety
-
-  typedef __attribute__((noreturn)) void (*QH)();
+  using QH = __attribute__((noreturn)) void(*)();
   QH queuedHandler_;
 
+  /// Use machinery like Meyers singleton to provide thread safety
   TerminateHandler()
     : queuedHandler_((QH)std::set_terminate(kotlinHandler)) {}
 
-  static TerminateHandler *instance() {
-    static TerminateHandler *singleton = new TerminateHandler();
+  static TerminateHandler* instance() {
+    static TerminateHandler* singleton [[clang::no_destroy]] = new TerminateHandler();
     return singleton;
   }
 
 	// Copy, move and assign would be safe, but not much useful, so let's delete all (rule of 5)
-	TerminateHandler(const TerminateHandler &) = delete;
-	TerminateHandler(TerminateHandler &&) = delete;
-	TerminateHandler &operator=(const TerminateHandler &) = delete;
-	TerminateHandler &operator=(TerminateHandler &&) = delete;
+	TerminateHandler(const TerminateHandler&) = delete;
+	TerminateHandler(TerminateHandler&&) = delete;
+	TerminateHandler& operator=(const TerminateHandler&) = delete;
+	TerminateHandler& operator=(TerminateHandler&&) = delete;
 	// Dtor might be in use to restore original handler. However, consequent install
 	// will not reconstruct handler anyway, so let's keep dtor deleted to avoid confusion.
 	~TerminateHandler() = delete;
