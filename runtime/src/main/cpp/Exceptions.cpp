@@ -303,11 +303,11 @@ class TerminateHandler {
           konan::abort();
         } catch (...) {
           // Not a Kotlin exception - call default handler
-          instance()->queuedHandler_();
+          instance().queuedHandler_();
         }
       }
       // Come here in case of direct terminate() call or unknown exception - go to default terminate handler.
-      instance()->queuedHandler_();
+      instance().queuedHandler_();
     });
   }
 
@@ -318,8 +318,8 @@ class TerminateHandler {
   TerminateHandler()
     : queuedHandler_((QH)std::set_terminate(kotlinHandler)) {}
 
-  static TerminateHandler* instance() {
-    static TerminateHandler* singleton [[clang::no_destroy]] = new TerminateHandler();
+  static TerminateHandler& instance() {
+    static TerminateHandler singleton [[clang::no_destroy]];
     return singleton;
   }
 
