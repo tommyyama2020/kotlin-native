@@ -291,8 +291,8 @@ RUNTIME_NORETURN void TerminateWithUnhandledException(KRef throwable) {
 namespace {
 class TerminateHandler {
 
-	// In fact, it's safe to call my_handler directly from outside: it will do the job and then invoke original handler,
-	// even if it has not been initialized yet. So one may want to make it public and/or not the class member
+  // In fact, it's safe to call my_handler directly from outside: it will do the job and then invoke original handler,
+  // even if it has not been initialized yet. So one may want to make it public and/or not the class member
   RUNTIME_NORETURN static void kotlinHandler() {
     concurrentTerminateWrapper([]() {
       if (auto currentException = std::current_exception()) {
@@ -323,27 +323,26 @@ class TerminateHandler {
     return singleton;
   }
 
-	// Copy, move and assign would be safe, but not much useful, so let's delete all (rule of 5)
-	TerminateHandler(const TerminateHandler&) = delete;
-	TerminateHandler(TerminateHandler&&) = delete;
-	TerminateHandler& operator=(const TerminateHandler&) = delete;
-	TerminateHandler& operator=(TerminateHandler&&) = delete;
-	// Dtor might be in use to restore original handler. However, consequent install
-	// will not reconstruct handler anyway, so let's keep dtor deleted to avoid confusion.
-	~TerminateHandler() = delete;
+  // Copy, move and assign would be safe, but not much useful, so let's delete all (rule of 5)
+  TerminateHandler(const TerminateHandler&) = delete;
+  TerminateHandler(TerminateHandler&&) = delete;
+  TerminateHandler& operator=(const TerminateHandler&) = delete;
+  TerminateHandler& operator=(TerminateHandler&&) = delete;
+  // Dtor might be in use to restore original handler. However, consequent install
+  // will not reconstruct handler anyway, so let's keep dtor deleted to avoid confusion.
+  ~TerminateHandler() = delete;
 public:
-	/// First call will do the job, all consecuent will do nothing.
-	static void install() {
-		instance(); // Use side effect of warming up
-	}
+  /// First call will do the job, all consecuent will do nothing.
+  static void install() {
+    instance(); // Use side effect of warming up
+  }
 };
 } // anon namespace
 
 // Use one public funuction to limit access to the class declaration
 void SetKonanTerminateHandler() {
-	TerminateHandler::install();
+  TerminateHandler::install();
 }
-
 
 #else // KONAN_OBJC_INTEROP
 
