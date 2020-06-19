@@ -179,20 +179,9 @@ OBJ_GETTER(GetStackTraceStrings, KConstRef stackTrace) {
     RuntimeCheck(symbols != nullptr, "Not enough memory to retrieve the stacktrace");
 
     for (int index = 0; index < size; ++index) {
-<<<<<<< HEAD
       auto sourceInfo = getSourceInfo(stackTrace, index);
       const char* symbol = symbols[index];
       const char* result;
-=======
-      auto sourceInfo = Kotlin_getSourceInfo(*PrimitiveArrayAddressOfElementAt<KNativePtr>(stackTrace->array(), index));
-<<<<<<< HEAD
-      const char *symbol = symbols[index];
-      const char *result;
->>>>>>> [runtime] Fix possible race in terminate handler
-=======
-      const char* symbol = symbols[index];
-      const char* result;
->>>>>>> minor: PR feedback
       char line[1024];
       if (sourceInfo.fileName != nullptr) {
         if (sourceInfo.lineNumber != -1) {
@@ -332,14 +321,14 @@ class TerminateHandler {
   // will not reconstruct handler anyway, so let's keep dtor deleted to avoid confusion.
   ~TerminateHandler() = delete;
 public:
-  /// First call will do the job, all consecuent will do nothing.
+  /// First call will do the job, all consequent will do nothing.
   static void install() {
     instance(); // Use side effect of warming up
   }
 };
 } // anon namespace
 
-// Use one public funuction to limit access to the class declaration
+// Use one public function to limit access to the class declaration
 void SetKonanTerminateHandler() {
   TerminateHandler::install();
 }
