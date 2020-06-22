@@ -245,7 +245,7 @@ class {
     int terminatingFlag = 0;
   public:
     template <class Fun> RUNTIME_NORETURN void operator()(Fun block) {
-      if (!compareAndSet(&terminatingFlag, 0, 1)) {
+      if (compareAndSet(&terminatingFlag, 0, 1)) {
         block();
         // block() is supposed to be NORETURN, otherwise go to normal abort()
         konan::abort();
