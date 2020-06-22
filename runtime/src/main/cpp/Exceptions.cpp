@@ -257,7 +257,8 @@ class {
     }
 } concurrentTerminateWrapper;
 
-void reportUnhandledException(KRef throwable) {
+//! Process exception hook (if any) or just printStackTrace + write crash log
+void processUnhandledKotlinException(KRef throwable) {
   OnUnhandledException(throwable);
 #if KONAN_REPORT_BACKTRACE_TO_IOS_CRASH_LOG
   ReportBacktraceToIosCrashLog(throwable);
@@ -268,7 +269,7 @@ void reportUnhandledException(KRef throwable) {
 
 RUNTIME_NORETURN void TerminateWithUnhandledException(KRef throwable) {
   concurrentTerminateWrapper([=]() {
-    reportUnhandledException(throwable);
+      processUnhandledKotlinException(throwable);
     konan::abort();
   });
 }
@@ -288,7 +289,7 @@ class TerminateHandler {
         try {
           std::rethrow_exception(currentException);
         } catch (ExceptionObjHolder& e) {
-          reportUnhandledException(e.obj());
+          processUnhandledKotlinException(e.obj());
           konan::abort();
         } catch (...) {
           // Not a Kotlin exception - call default handler
