@@ -24,10 +24,6 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFieldImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.util.*
-import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
-import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
-import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
-import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.builtins.konan.KonanBuiltIns
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
@@ -59,9 +55,12 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.isEffectivelyExternal
 internal class SpecialDeclarationsFactory(val context: Context) {
     private val enumSpecialDeclarationsFactory by lazy { EnumSpecialDeclarationsFactory(context) }
     private val outerThisFields = mutableMapOf<IrClass, IrField>()
-    private val bridgesDescriptors = mutableMapOf<Pair<IrSimpleFunction, BridgeDirections>, IrSimpleFunction>()
     private val loweredEnums = mutableMapOf<IrClass, LoweredEnum>()
     private val ordinals = mutableMapOf<ClassDescriptor, Map<ClassDescriptor, Int>>()
+
+    private data class BridgeKey(val target: IrSimpleFunction, val bridgeDirections: BridgeDirections)
+
+    private val bridges = mutableMapOf<BridgeKey, IrSimpleFunction>()
 
     val loweredInlineFunctions = mutableSetOf<IrFunction>()
 
@@ -119,20 +118,30 @@ internal class SpecialDeclarationsFactory(val context: Context) {
         assert(overriddenFunction.needBridge) {
             "Function ${irFunction.descriptor} is not needed in a bridge to call overridden function ${overriddenFunction.overriddenFunction.descriptor}"
         }
-        val bridgeDirections = overriddenFunction.bridgeDirections
-        return bridgesDescriptors.getOrPut(irFunction to bridgeDirections) {
-            createBridge(irFunction, bridgeDirections)
-        }
+        val key = BridgeKey(irFunction, overriddenFunction.bridgeDirections)
+        return bridges.getOrPut(key) { createBridge(key) }
     }
 
-    private fun createBridge(function: IrSimpleFunction,
-                             bridgeDirections: BridgeDirections): IrSimpleFunction = WrappedSimpleFunctionDescriptor().let { descriptor ->
+    private fun createBridge(key: BridgeKey): IrSimpleFunction = WrappedSimpleFunctionDescriptor().let { descriptor ->
+        val (function, bridgeDirections) = key
         val startOffset = function.startOffset
         val endOffset = function.endOffset
-        val returnType = when (bridgeDirections.array[0]) {
+        val returnType = when (val returnBridgeDirection = bridgeDirections.array[0]) {
             BridgeDirection.TO_VALUE_TYPE,
             BridgeDirection.NOT_NEEDED -> function.returnType
             BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyNType
+            is BridgeDirection.TO_NOTHING -> when (returnBridgeDirection.fromBinaryType) {
+                null -> context.irBuiltIns.anyNType
+                PrimitiveBinaryType.BOOLEAN -> context.irBuiltIns.booleanType
+                PrimitiveBinaryType.BYTE -> context.irBuiltIns.byteType
+                PrimitiveBinaryType.SHORT -> context.irBuiltIns.shortType
+                PrimitiveBinaryType.INT -> context.irBuiltIns.intType
+                PrimitiveBinaryType.LONG -> context.irBuiltIns.longType
+                PrimitiveBinaryType.FLOAT -> context.irBuiltIns.floatType
+                PrimitiveBinaryType.DOUBLE -> context.irBuiltIns.doubleType
+                PrimitiveBinaryType.POINTER -> context.ir.symbols.nativePtrType
+                PrimitiveBinaryType.VECTOR128 -> TODO("VECTOR128 is not supported at this point")
+            }
         }
         IrFunctionImpl(
                 startOffset, endOffset,
@@ -159,12 +168,14 @@ internal class SpecialDeclarationsFactory(val context: Context) {
                 BridgeDirection.TO_VALUE_TYPE -> function.dispatchReceiverParameter!!
                 BridgeDirection.NOT_NEEDED -> function.dispatchReceiverParameter
                 BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyClass.owner.thisReceiver!!
+                is BridgeDirection.TO_NOTHING -> error("Unexpected bridge direction")
             }
 
             val extensionReceiver = when (bridgeDirections.array[2]) {
                 BridgeDirection.TO_VALUE_TYPE -> function.extensionReceiverParameter!!
                 BridgeDirection.NOT_NEEDED -> function.extensionReceiverParameter
                 BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyClass.owner.thisReceiver!!
+                is BridgeDirection.TO_NOTHING -> error("Unexpected bridge direction")
             }
 
             val valueParameterTypes = function.valueParameters.mapIndexed { index, valueParameter ->
@@ -172,6 +183,7 @@ internal class SpecialDeclarationsFactory(val context: Context) {
                     BridgeDirection.TO_VALUE_TYPE -> valueParameter.type
                     BridgeDirection.NOT_NEEDED -> valueParameter.type
                     BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyNType
+                    is BridgeDirection.TO_NOTHING -> error("Unexpected bridge direction")
                 }
             }
 

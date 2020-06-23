@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.types.isNothing
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.resolve.annotations.argumentValue
@@ -93,22 +94,28 @@ internal fun IrFunction.hasReferenceAt(index: Int): Boolean {
     }
 }
 
-private fun IrFunction.needBridgeToAt(target: IrFunction, index: Int)
-        = hasValueTypeAt(index) xor target.hasValueTypeAt(index)
+private fun IrFunction.needBridgeToAt(target: IrFunction, index: Int) =
+        bridgeDirectionToAt(target, index) != BridgeDirection.NOT_NEEDED
 
 internal fun IrFunction.needBridgeTo(target: IrFunction)
         = (0..this.valueParameters.size + 2).any { needBridgeToAt(target, it) }
 
-internal enum class BridgeDirection {
-    NOT_NEEDED,
-    FROM_VALUE_TYPE,
-    TO_VALUE_TYPE
+internal sealed class BridgeDirection {
+    object NOT_NEEDED : BridgeDirection()
+    object FROM_VALUE_TYPE : BridgeDirection()
+    object TO_VALUE_TYPE : BridgeDirection()
+    data class TO_NOTHING(val fromBinaryType: PrimitiveBinaryType?) : BridgeDirection()
 }
 
 private fun IrFunction.bridgeDirectionToAt(target: IrFunction, index: Int)
        = when {
+            index == 0 && returnType.isNothing() && !target.returnType.isNothing() ->
+                BridgeDirection.TO_NOTHING(target.returnType.computePrimitiveBinaryTypeOrNull())
+
             hasValueTypeAt(index) && target.hasReferenceAt(index) -> BridgeDirection.FROM_VALUE_TYPE
+
             hasReferenceAt(index) && target.hasValueTypeAt(index) -> BridgeDirection.TO_VALUE_TYPE
+
             else -> BridgeDirection.NOT_NEEDED
         }
 
@@ -124,6 +131,7 @@ internal class BridgeDirections(val array: Array<BridgeDirection>) {
                 BridgeDirection.FROM_VALUE_TYPE -> 'U' // unbox
                 BridgeDirection.TO_VALUE_TYPE   -> 'B' // box
                 BridgeDirection.NOT_NEEDED      -> 'N' // none
+                is BridgeDirection.TO_NOTHING   -> 'V' // void
             })
         }
         return result.toString()
@@ -139,7 +147,7 @@ internal class BridgeDirections(val array: Array<BridgeDirection>) {
 
     override fun hashCode(): Int {
         var result = 0
-        array.forEach { result = result * 31 + it.ordinal }
+        array.forEach { result = result * 31 + it.hashCode() }
         return result
     }
 }
@@ -159,17 +167,15 @@ val IrSimpleFunction.allOverriddenFunctions: Set<IrSimpleFunction>
         return result
     }
 
-internal fun IrSimpleFunction.bridgeDirectionsTo(
-        overriddenDescriptor: IrSimpleFunction
-): BridgeDirections {
+internal fun IrSimpleFunction.bridgeDirectionsTo(overriddenFunction: IrSimpleFunction): BridgeDirections {
     val ourDirections = BridgeDirections(this.valueParameters.size)
     for (index in ourDirections.array.indices)
-        ourDirections.array[index] = this.bridgeDirectionToAt(overriddenDescriptor, index)
+        ourDirections.array[index] = this.bridgeDirectionToAt(overriddenFunction, index)
 
     val target = this.target
     if (!this.isReal && modality != Modality.ABSTRACT
-            && target.overrides(overriddenDescriptor)
-            && ourDirections == target.bridgeDirectionsTo(overriddenDescriptor)) {
+            && target.overrides(overriddenFunction)
+            && ourDirections == target.bridgeDirectionsTo(overriddenFunction)) {
         // Bridge is inherited from superclass.
         return BridgeDirections(this.valueParameters.size)
     }
