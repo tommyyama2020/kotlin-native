@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.atMostOne
 import org.jetbrains.kotlin.backend.konan.*
 import org.jetbrains.kotlin.backend.konan.ir.*
 import org.jetbrains.kotlin.backend.konan.llvm.longName
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
 import org.jetbrains.kotlin.ir.declarations.*
@@ -18,8 +19,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.types.isNothing
-import org.jetbrains.kotlin.ir.types.isUnit
+import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.resolve.annotations.argumentValue
 import org.jetbrains.kotlin.resolve.constants.StringValue
@@ -104,13 +104,21 @@ internal sealed class BridgeDirection {
     object NOT_NEEDED : BridgeDirection()
     object FROM_VALUE_TYPE : BridgeDirection()
     object TO_VALUE_TYPE : BridgeDirection()
+    object TO_NULL : BridgeDirection()
     data class TO_NOTHING(val fromBinaryType: PrimitiveBinaryType?) : BridgeDirection()
 }
+
+private fun IrType.isNullableNothing() =
+        isNullable() && classifierOrNull?.isClassWithFqName(KotlinBuiltIns.FQ_NAMES.nothing) == true
 
 private fun IrFunction.bridgeDirectionToAt(target: IrFunction, index: Int)
        = when {
             index == 0 && returnType.isNothing() && !target.returnType.isNothing() ->
                 BridgeDirection.TO_NOTHING(target.returnType.computePrimitiveBinaryTypeOrNull())
+
+            index == 0 && returnType.isNullableNothing()
+                    && target.returnType.computePrimitiveBinaryTypeOrNull() == PrimitiveBinaryType.POINTER ->
+                BridgeDirection.TO_NULL
 
             hasValueTypeAt(index) && target.hasReferenceAt(index) -> BridgeDirection.FROM_VALUE_TYPE
 
@@ -130,7 +138,8 @@ internal class BridgeDirections(val array: Array<BridgeDirection>) {
             result.append(when (it) {
                 BridgeDirection.FROM_VALUE_TYPE -> 'U' // unbox
                 BridgeDirection.TO_VALUE_TYPE   -> 'B' // box
-                BridgeDirection.NOT_NEEDED      -> 'N' // none
+                BridgeDirection.NOT_NEEDED      -> 'E' // empty
+                BridgeDirection.TO_NULL         -> 'N' // null
                 is BridgeDirection.TO_NOTHING   -> 'V' // void
             })
         }

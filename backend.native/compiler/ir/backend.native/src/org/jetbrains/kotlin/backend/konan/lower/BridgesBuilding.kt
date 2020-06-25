@@ -250,7 +250,12 @@ private fun Context.buildBridge(startOffset: Int, endOffset: Int,
             }
         }
 
-        +irReturn(delegatingCall)
+        if (overriddenFunction.bridgeDirections.array[0] != BridgeDirection.TO_NULL)
+            +irReturn(delegatingCall)
+        else {
+            +delegatingCall
+            +irReturn(irNull())
+        }
     }
     return bridge
 }

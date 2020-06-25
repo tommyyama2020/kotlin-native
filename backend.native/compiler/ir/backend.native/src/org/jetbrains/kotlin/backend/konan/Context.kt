@@ -43,6 +43,8 @@ import org.jetbrains.kotlin.backend.konan.llvm.coverage.CoverageManager
 import org.jetbrains.kotlin.ir.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.konan.library.KonanLibraryLayout
 import org.jetbrains.kotlin.library.SerializedIrModule
@@ -130,6 +132,7 @@ internal class SpecialDeclarationsFactory(val context: Context) {
             BridgeDirection.TO_VALUE_TYPE,
             BridgeDirection.NOT_NEEDED -> function.returnType
             BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyNType
+            BridgeDirection.TO_NULL -> context.ir.symbols.nativePointed.defaultType.makeNullable()
             is BridgeDirection.TO_NOTHING -> when (returnBridgeDirection.fromBinaryType) {
                 null -> context.irBuiltIns.anyNType
                 PrimitiveBinaryType.BOOLEAN -> context.irBuiltIns.booleanType
@@ -168,14 +171,14 @@ internal class SpecialDeclarationsFactory(val context: Context) {
                 BridgeDirection.TO_VALUE_TYPE -> function.dispatchReceiverParameter!!
                 BridgeDirection.NOT_NEEDED -> function.dispatchReceiverParameter
                 BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyClass.owner.thisReceiver!!
-                is BridgeDirection.TO_NOTHING -> error("Unexpected bridge direction")
+                else -> error("Unexpected bridge direction: ${bridgeDirections.array[1]}")
             }
 
             val extensionReceiver = when (bridgeDirections.array[2]) {
                 BridgeDirection.TO_VALUE_TYPE -> function.extensionReceiverParameter!!
                 BridgeDirection.NOT_NEEDED -> function.extensionReceiverParameter
                 BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyClass.owner.thisReceiver!!
-                is BridgeDirection.TO_NOTHING -> error("Unexpected bridge direction")
+                else -> error("Unexpected bridge direction: ${bridgeDirections.array[2]}")
             }
 
             val valueParameterTypes = function.valueParameters.mapIndexed { index, valueParameter ->
@@ -183,7 +186,7 @@ internal class SpecialDeclarationsFactory(val context: Context) {
                     BridgeDirection.TO_VALUE_TYPE -> valueParameter.type
                     BridgeDirection.NOT_NEEDED -> valueParameter.type
                     BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyNType
-                    is BridgeDirection.TO_NOTHING -> error("Unexpected bridge direction")
+                    else -> error("Unexpected bridge direction: ${bridgeDirections.array[index + 3]}")
                 }
             }
 
