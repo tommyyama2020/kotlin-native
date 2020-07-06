@@ -16,9 +16,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
-import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.resolve.annotations.argumentValue
@@ -76,71 +74,93 @@ internal val IrClass.isArrayWithFixedSizeItems: Boolean
 
 fun IrClass.isAbstract() = this.modality == Modality.SEALED || this.modality == Modality.ABSTRACT
 
-internal fun IrFunction.hasValueTypeAt(index: Int): Boolean {
-    when (index) {
-        0 -> return !isSuspend && returnType.let { (it.isInlinedNative() || it.isUnit()) }
-        1 -> return dispatchReceiverParameter.let { it != null && it.type.isInlinedNative() }
-        2 -> return extensionReceiverParameter.let { it != null && it.type.isInlinedNative() }
-        else -> return this.valueParameters[index - 3].type.isInlinedNative()
-    }
+internal fun IrFunction.hasValueTypeAt(index: Int) = when (index) {
+    BridgeDirection.RETURN_INDEX -> !isSuspend && returnType.let { (it.isInlinedNative() || it.isUnit()) }
+    BridgeDirection.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter.let { it != null && it.type.isInlinedNative() }
+    BridgeDirection.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter.let { it != null && it.type.isInlinedNative() }
+    else -> this.valueParameters[BridgeDirection.unmapParameterIndex(index)].type.isInlinedNative()
 }
 
-internal fun IrFunction.hasReferenceAt(index: Int): Boolean {
-    when (index) {
-        0 -> return isSuspend || returnType.let { !it.isInlinedNative() && !it.isUnit() }
-        1 -> return dispatchReceiverParameter.let { it != null && !it.type.isInlinedNative() }
-        2 -> return extensionReceiverParameter.let { it != null && !it.type.isInlinedNative() }
-        else -> return !this.valueParameters[index - 3].type.isInlinedNative()
-    }
+internal fun IrFunction.hasReferenceAt(index: Int) = when (index) {
+    BridgeDirection.RETURN_INDEX -> isSuspend || returnType.let { !it.isInlinedNative() && !it.isUnit() }
+    BridgeDirection.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter.let { it != null && !it.type.isInlinedNative() }
+    BridgeDirection.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter.let { it != null && !it.type.isInlinedNative() }
+    else -> !this.valueParameters[BridgeDirection.unmapParameterIndex(index)].type.isInlinedNative()
 }
 
-private fun IrFunction.needBridgeToAt(target: IrFunction, index: Int) =
-        bridgeDirectionToAt(target, index) != BridgeDirection.NOT_NEEDED
+private fun IrFunction.typeAt(index: Int) = when (index) {
+    BridgeDirection.RETURN_INDEX -> if (isSuspend) null else returnType
+    BridgeDirection.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter?.type
+    BridgeDirection.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter?.type
+    else -> this.valueParameters[BridgeDirection.unmapParameterIndex(index)].type
+}
+
+private fun IrFunction.needBridgeToAt(target: IrFunction, index: Int)
+        = bridgeDirectionToAt(target, index).kind != BridgeDirectionKind.NONE
 
 internal fun IrFunction.needBridgeTo(target: IrFunction)
         = (0..this.valueParameters.size + 2).any { needBridgeToAt(target, it) }
 
-internal sealed class BridgeDirection {
-    object NOT_NEEDED : BridgeDirection()
-    object FROM_VALUE_TYPE : BridgeDirection()
-    object TO_VALUE_TYPE : BridgeDirection()
-    object TO_NULL : BridgeDirection()
-    data class TO_NOTHING(val fromBinaryType: PrimitiveBinaryType?) : BridgeDirection()
+internal enum class BridgeDirectionKind {
+    NONE,
+    BOX,
+    UNBOX
 }
 
-private fun IrType.isNullableNothing() =
+internal data class BridgeDirection(val irClass: IrClass?, val kind: BridgeDirectionKind) {
+    companion object {
+        val NONE = BridgeDirection(null, BridgeDirectionKind.NONE)
+        const val RETURN_INDEX = 0
+        const val DISPATCH_RECEIVER_INDEX = 1
+        const val EXTENSION_RECEIVER_INDEX = 2
+        fun mapParameterIndex(index: Int) = index + 3
+        fun unmapParameterIndex(index: Int) = index - 3
+    }
+}
+
+internal fun IrType.isNullableNothing() =
         isNullable() && classifierOrNull?.isClassWithFqName(KotlinBuiltIns.FQ_NAMES.nothing) == true
 
-private fun IrFunction.bridgeDirectionToAt(target: IrFunction, index: Int)
-       = when {
-            index == 0 && returnType.isNothing() && !target.returnType.isNothing() ->
-                BridgeDirection.TO_NOTHING(target.returnType.computePrimitiveBinaryTypeOrNull())
+private fun IrFunction.bridgeDirectionToAt(overriddenFunction: IrFunction, index: Int): BridgeDirection {
+    val irClass = overriddenFunction.typeAt(index)?.erasure()
+    return when {
+        index == 0 && returnType.isNothing() && !overriddenFunction.returnType.isNothing() ->
+            BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
 
-            index == 0 && returnType.isNullableNothing()
-                    && target.returnType.computePrimitiveBinaryTypeOrNull() == PrimitiveBinaryType.POINTER ->
-                BridgeDirection.TO_NULL
+        index == 0 && returnType.isNullableNothing()
+                && overriddenFunction.returnType.computePrimitiveBinaryTypeOrNull() == PrimitiveBinaryType.POINTER ->
+            BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
 
-            hasValueTypeAt(index) && target.hasReferenceAt(index) -> BridgeDirection.FROM_VALUE_TYPE
+        hasValueTypeAt(index) && overriddenFunction.hasReferenceAt(index) ->
+            // Erase to [Any?].
+            BridgeDirection(null, BridgeDirectionKind.BOX)
 
-            hasReferenceAt(index) && target.hasValueTypeAt(index) -> BridgeDirection.TO_VALUE_TYPE
+        hasReferenceAt(index) && overriddenFunction.hasValueTypeAt(index) ->
+            BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
 
-            else -> BridgeDirection.NOT_NEEDED
+        else -> BridgeDirection.NONE
+    }
+}
+
+private tailrec fun IrType.erasure(): IrClass =
+        when (val classifier = classifierOrFail) {
+            is IrClassSymbol -> classifier.owner
+            is IrTypeParameterSymbol -> classifier.owner.superTypes.first().erasure()
+            else -> error(classifier)
         }
 
 internal class BridgeDirections(val array: Array<BridgeDirection>) {
-    constructor(parametersCount: Int): this(Array<BridgeDirection>(parametersCount + 3, { BridgeDirection.NOT_NEEDED }))
+    constructor(parametersCount: Int): this(Array<BridgeDirection>(parametersCount + 3) { BridgeDirection.NONE })
 
-    fun allNotNeeded(): Boolean = array.all { it == BridgeDirection.NOT_NEEDED }
+    fun allNotNeeded(): Boolean = array.all { it.kind == BridgeDirectionKind.NONE }
 
     override fun toString(): String {
         val result = StringBuilder()
         array.forEach {
-            result.append(when (it) {
-                BridgeDirection.FROM_VALUE_TYPE -> 'U' // unbox
-                BridgeDirection.TO_VALUE_TYPE   -> 'B' // box
-                BridgeDirection.NOT_NEEDED      -> 'E' // empty
-                BridgeDirection.TO_NULL         -> 'N' // null
-                is BridgeDirection.TO_NOTHING   -> 'V' // void
+            result.append(when (it.kind) {
+                BridgeDirectionKind.BOX -> 'B'
+                BridgeDirectionKind.UNBOX -> 'U'
+                BridgeDirectionKind.NONE -> 'N'
             })
         }
         return result.toString()

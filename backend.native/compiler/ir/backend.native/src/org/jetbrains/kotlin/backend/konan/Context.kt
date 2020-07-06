@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.backend.konan.llvm.coverage.CoverageManager
 import org.jetbrains.kotlin.ir.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.name.FqName
@@ -128,24 +129,13 @@ internal class SpecialDeclarationsFactory(val context: Context) {
         val (function, bridgeDirections) = key
         val startOffset = function.startOffset
         val endOffset = function.endOffset
-        val returnType = when (val returnBridgeDirection = bridgeDirections.array[0]) {
-            BridgeDirection.TO_VALUE_TYPE,
-            BridgeDirection.NOT_NEEDED -> function.returnType
-            BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyNType
-            BridgeDirection.TO_NULL -> context.ir.symbols.nativePointed.defaultType.makeNullable()
-            is BridgeDirection.TO_NOTHING -> when (returnBridgeDirection.fromBinaryType) {
-                null -> context.irBuiltIns.anyNType
-                PrimitiveBinaryType.BOOLEAN -> context.irBuiltIns.booleanType
-                PrimitiveBinaryType.BYTE -> context.irBuiltIns.byteType
-                PrimitiveBinaryType.SHORT -> context.irBuiltIns.shortType
-                PrimitiveBinaryType.INT -> context.irBuiltIns.intType
-                PrimitiveBinaryType.LONG -> context.irBuiltIns.longType
-                PrimitiveBinaryType.FLOAT -> context.irBuiltIns.floatType
-                PrimitiveBinaryType.DOUBLE -> context.irBuiltIns.doubleType
-                PrimitiveBinaryType.POINTER -> context.ir.symbols.nativePtrType
-                PrimitiveBinaryType.VECTOR128 -> TODO("VECTOR128 is not supported at this point")
-            }
+
+        fun typeAt(index: Int): IrType? {
+            return if (bridgeDirections.array[index].kind == BridgeDirectionKind.NONE)
+                null
+            else bridgeDirections.array[index].irClass?.defaultType ?: context.irBuiltIns.anyNType
         }
+
         IrFunctionImpl(
                 startOffset, endOffset,
                 DECLARATION_ORIGIN_BRIDGE_METHOD(function),
@@ -157,7 +147,7 @@ internal class SpecialDeclarationsFactory(val context: Context) {
                 isExternal = false,
                 isTailrec = false,
                 isSuspend = function.isSuspend,
-                returnType = returnType,
+                returnType = typeAt(BridgeDirection.RETURN_INDEX) ?: function.returnType,
                 isExpect = false,
                 isFakeOverride = false,
                 isOperator = false,
@@ -167,32 +157,15 @@ internal class SpecialDeclarationsFactory(val context: Context) {
             descriptor.bind(bridge)
             parent = function.parent
 
-            val dispatchReceiver = when (bridgeDirections.array[1]) {
-                BridgeDirection.TO_VALUE_TYPE -> function.dispatchReceiverParameter!!
-                BridgeDirection.NOT_NEEDED -> function.dispatchReceiverParameter
-                BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyClass.owner.thisReceiver!!
-                else -> error("Unexpected bridge direction: ${bridgeDirections.array[1]}")
+            dispatchReceiverParameter = function.dispatchReceiverParameter?.let {
+                it.copyTo(bridge, type = typeAt(BridgeDirection.DISPATCH_RECEIVER_INDEX) ?: it.type)
             }
-
-            val extensionReceiver = when (bridgeDirections.array[2]) {
-                BridgeDirection.TO_VALUE_TYPE -> function.extensionReceiverParameter!!
-                BridgeDirection.NOT_NEEDED -> function.extensionReceiverParameter
-                BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyClass.owner.thisReceiver!!
-                else -> error("Unexpected bridge direction: ${bridgeDirections.array[2]}")
+            extensionReceiverParameter = function.extensionReceiverParameter?.let {
+                it.copyTo(bridge, type = typeAt(BridgeDirection.EXTENSION_RECEIVER_INDEX) ?: it.type)
             }
-
-            val valueParameterTypes = function.valueParameters.mapIndexed { index, valueParameter ->
-                when (bridgeDirections.array[index + 3]) {
-                    BridgeDirection.TO_VALUE_TYPE -> valueParameter.type
-                    BridgeDirection.NOT_NEEDED -> valueParameter.type
-                    BridgeDirection.FROM_VALUE_TYPE -> context.irBuiltIns.anyNType
-                    else -> error("Unexpected bridge direction: ${bridgeDirections.array[index + 3]}")
-                }
+            valueParameters += function.valueParameters.map {
+                it.copyTo(bridge, type = typeAt(BridgeDirection.mapParameterIndex(it.index)) ?: it.type)
             }
-
-            dispatchReceiverParameter = dispatchReceiver?.copyTo(bridge)
-            extensionReceiverParameter = extensionReceiver?.copyTo(bridge)
-            valueParameters += function.valueParameters.map { it.copyTo(bridge, type = valueParameterTypes[it.index]) }
 
             typeParameters += function.typeParameters.map { parameter ->
                 parameter.copyToWithoutSuperTypes(bridge).also { it.superTypes += parameter.superTypes }
