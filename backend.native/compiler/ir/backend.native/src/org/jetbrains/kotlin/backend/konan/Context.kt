@@ -130,11 +130,10 @@ internal class SpecialDeclarationsFactory(val context: Context) {
         val startOffset = function.startOffset
         val endOffset = function.endOffset
 
-        fun typeAt(index: Int): IrType? {
-            return if (bridgeDirections.array[index].kind == BridgeDirectionKind.NONE)
-                null
-            else bridgeDirections.array[index].irClass?.defaultType ?: context.irBuiltIns.anyNType
-        }
+        fun BridgeDirection.type() =
+                if (this.kind == BridgeDirectionKind.NONE)
+                    null
+                else this.irClass?.defaultType ?: context.irBuiltIns.anyNType
 
         IrFunctionImpl(
                 startOffset, endOffset,
@@ -147,7 +146,7 @@ internal class SpecialDeclarationsFactory(val context: Context) {
                 isExternal = false,
                 isTailrec = false,
                 isSuspend = function.isSuspend,
-                returnType = typeAt(BridgeDirection.RETURN_INDEX) ?: function.returnType,
+                returnType = bridgeDirections.returnDirection.type() ?: function.returnType,
                 isExpect = false,
                 isFakeOverride = false,
                 isOperator = false,
@@ -158,13 +157,13 @@ internal class SpecialDeclarationsFactory(val context: Context) {
             parent = function.parent
 
             dispatchReceiverParameter = function.dispatchReceiverParameter?.let {
-                it.copyTo(bridge, type = typeAt(BridgeDirection.DISPATCH_RECEIVER_INDEX) ?: it.type)
+                it.copyTo(bridge, type = bridgeDirections.dispatchReceiverDirection.type() ?: it.type)
             }
             extensionReceiverParameter = function.extensionReceiverParameter?.let {
-                it.copyTo(bridge, type = typeAt(BridgeDirection.EXTENSION_RECEIVER_INDEX) ?: it.type)
+                it.copyTo(bridge, type = bridgeDirections.extensionReceiverDirection.type() ?: it.type)
             }
             valueParameters += function.valueParameters.map {
-                it.copyTo(bridge, type = typeAt(BridgeDirection.mapParameterIndex(it.index)) ?: it.type)
+                it.copyTo(bridge, type = bridgeDirections.parameterDirectionAt(it.index).type() ?: it.type)
             }
 
             typeParameters += function.typeParameters.map { parameter ->

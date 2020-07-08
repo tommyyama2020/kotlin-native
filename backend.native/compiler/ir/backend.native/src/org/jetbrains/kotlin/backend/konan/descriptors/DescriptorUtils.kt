@@ -74,32 +74,54 @@ internal val IrClass.isArrayWithFixedSizeItems: Boolean
 
 fun IrClass.isAbstract() = this.modality == Modality.SEALED || this.modality == Modality.ABSTRACT
 
-internal fun IrFunction.hasValueTypeAt(index: Int) = when (index) {
-    BridgeDirection.RETURN_INDEX -> !isSuspend && returnType.let { (it.isInlinedNative() || it.isUnit()) }
-    BridgeDirection.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter.let { it != null && it.type.isInlinedNative() }
-    BridgeDirection.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter.let { it != null && it.type.isInlinedNative() }
-    else -> this.valueParameters[BridgeDirection.unmapParameterIndex(index)].type.isInlinedNative()
+private fun IrFunction.hasValueTypeAt(index: ParameterIndex) = when (index) {
+    ParameterIndex.RETURN_INDEX -> !isSuspend && returnType.let { (it.isInlinedNative() || it.isUnit()) }
+    ParameterIndex.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter.let { it != null && it.type.isInlinedNative() }
+    ParameterIndex.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter.let { it != null && it.type.isInlinedNative() }
+    else -> this.valueParameters[index.unmap()].type.isInlinedNative()
 }
 
-internal fun IrFunction.hasReferenceAt(index: Int) = when (index) {
-    BridgeDirection.RETURN_INDEX -> isSuspend || returnType.let { !it.isInlinedNative() && !it.isUnit() }
-    BridgeDirection.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter.let { it != null && !it.type.isInlinedNative() }
-    BridgeDirection.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter.let { it != null && !it.type.isInlinedNative() }
-    else -> !this.valueParameters[BridgeDirection.unmapParameterIndex(index)].type.isInlinedNative()
+private fun IrFunction.hasReferenceAt(index: ParameterIndex) = when (index) {
+    ParameterIndex.RETURN_INDEX -> isSuspend || returnType.let { !it.isInlinedNative() && !it.isUnit() }
+    ParameterIndex.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter.let { it != null && !it.type.isInlinedNative() }
+    ParameterIndex.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter.let { it != null && !it.type.isInlinedNative() }
+    else -> !this.valueParameters[index.unmap()].type.isInlinedNative()
 }
 
-private fun IrFunction.typeAt(index: Int) = when (index) {
-    BridgeDirection.RETURN_INDEX -> if (isSuspend) null else returnType
-    BridgeDirection.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter?.type
-    BridgeDirection.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter?.type
-    else -> this.valueParameters[BridgeDirection.unmapParameterIndex(index)].type
+private fun IrFunction.typeAt(index: ParameterIndex) = when (index) {
+    ParameterIndex.RETURN_INDEX -> if (isSuspend) null else returnType
+    ParameterIndex.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter?.type
+    ParameterIndex.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter?.type
+    else -> this.valueParameters[index.unmap()].type
 }
 
-private fun IrFunction.needBridgeToAt(target: IrFunction, index: Int)
+private fun IrFunction.needBridgeToAt(target: IrFunction, index: ParameterIndex)
         = bridgeDirectionToAt(target, index).kind != BridgeDirectionKind.NONE
 
-internal fun IrFunction.needBridgeTo(target: IrFunction)
-        = (0..this.valueParameters.size + 2).any { needBridgeToAt(target, it) }
+@Suppress("EXPERIMENTAL_FEATURE_WARNING")
+private inline class ParameterIndex(val index: Int) {
+    companion object {
+        val RETURN_INDEX = ParameterIndex(0)
+        val DISPATCH_RECEIVER_INDEX = ParameterIndex(1)
+        val EXTENSION_RECEIVER_INDEX = ParameterIndex(2)
+
+        fun map(index: Int) = ParameterIndex(index + 3)
+
+        fun allParametersCount(irFunction: IrFunction) = irFunction.valueParameters.size + 3
+
+        inline fun forEachIndex(irFunction: IrFunction, block: (ParameterIndex) -> Unit) =
+                (0 until allParametersCount(irFunction)).forEach { block(ParameterIndex(it)) }
+    }
+
+    fun unmap() = index - 3
+}
+
+internal fun IrFunction.needBridgeTo(target: IrFunction): Boolean {
+    ParameterIndex.forEachIndex(this) {
+        if (needBridgeToAt(target, it)) return true
+    }
+    return false
+}
 
 internal enum class BridgeDirectionKind {
     NONE,
@@ -110,24 +132,19 @@ internal enum class BridgeDirectionKind {
 internal data class BridgeDirection(val irClass: IrClass?, val kind: BridgeDirectionKind) {
     companion object {
         val NONE = BridgeDirection(null, BridgeDirectionKind.NONE)
-        const val RETURN_INDEX = 0
-        const val DISPATCH_RECEIVER_INDEX = 1
-        const val EXTENSION_RECEIVER_INDEX = 2
-        fun mapParameterIndex(index: Int) = index + 3
-        fun unmapParameterIndex(index: Int) = index - 3
     }
 }
 
-internal fun IrType.isNullableNothing() =
+private fun IrType.isNullableNothing() =
         isNullable() && classifierOrNull?.isClassWithFqName(KotlinBuiltIns.FQ_NAMES.nothing) == true
 
-private fun IrFunction.bridgeDirectionToAt(overriddenFunction: IrFunction, index: Int): BridgeDirection {
+private fun IrFunction.bridgeDirectionToAt(overriddenFunction: IrFunction, index: ParameterIndex): BridgeDirection {
     val irClass = overriddenFunction.typeAt(index)?.erasure()
     return when {
-        index == BridgeDirection.RETURN_INDEX && returnType.isNothing() && !overriddenFunction.returnType.isNothing() ->
+        index == ParameterIndex.RETURN_INDEX && returnType.isNothing() && !overriddenFunction.returnType.isNothing() ->
             BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
 
-        index == BridgeDirection.RETURN_INDEX && returnType.isNullableNothing()
+        index == ParameterIndex.RETURN_INDEX && returnType.isNullableNothing()
                 && overriddenFunction.returnType.computePrimitiveBinaryTypeOrNull() == PrimitiveBinaryType.POINTER ->
             BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
 
@@ -149,10 +166,20 @@ private tailrec fun IrType.erasure(): IrClass =
             else -> error(classifier)
         }
 
-internal class BridgeDirections(val array: Array<BridgeDirection>) {
-    constructor(parametersCount: Int): this(Array<BridgeDirection>(parametersCount + 3) { BridgeDirection.NONE })
+internal class BridgeDirections(private val array: Array<BridgeDirection>) {
+    constructor(irFunction: IrSimpleFunction, overriddenFunction: IrSimpleFunction)
+            : this(Array<BridgeDirection>(ParameterIndex.allParametersCount(irFunction)) {
+        irFunction.bridgeDirectionToAt(overriddenFunction, ParameterIndex(it))
+    })
 
     fun allNotNeeded(): Boolean = array.all { it.kind == BridgeDirectionKind.NONE }
+
+    private fun getDirectionAt(index: ParameterIndex) = array[index.index]
+
+    val returnDirection get() = getDirectionAt(ParameterIndex.RETURN_INDEX)
+    val dispatchReceiverDirection get() = getDirectionAt(ParameterIndex.DISPATCH_RECEIVER_INDEX)
+    val extensionReceiverDirection get() = getDirectionAt(ParameterIndex.EXTENSION_RECEIVER_INDEX)
+    fun parameterDirectionAt(index: Int) = getDirectionAt(ParameterIndex.map(index))
 
     override fun toString(): String {
         val result = StringBuilder()
@@ -179,6 +206,10 @@ internal class BridgeDirections(val array: Array<BridgeDirection>) {
         array.forEach { result = result * 31 + it.hashCode() }
         return result
     }
+
+    companion object {
+        fun none(irFunction: IrSimpleFunction) = BridgeDirections(irFunction, irFunction)
+    }
 }
 
 val IrSimpleFunction.allOverriddenFunctions: Set<IrSimpleFunction>
@@ -197,16 +228,14 @@ val IrSimpleFunction.allOverriddenFunctions: Set<IrSimpleFunction>
     }
 
 internal fun IrSimpleFunction.bridgeDirectionsTo(overriddenFunction: IrSimpleFunction): BridgeDirections {
-    val ourDirections = BridgeDirections(this.valueParameters.size)
-    for (index in ourDirections.array.indices)
-        ourDirections.array[index] = this.bridgeDirectionToAt(overriddenFunction, index)
+    val ourDirections = BridgeDirections(this, overriddenFunction)
 
     val target = this.target
     if (!this.isReal && modality != Modality.ABSTRACT
             && target.overrides(overriddenFunction)
             && ourDirections == target.bridgeDirectionsTo(overriddenFunction)) {
         // Bridge is inherited from superclass.
-        return BridgeDirections(this.valueParameters.size)
+        return BridgeDirections.none(this)
     }
 
     return ourDirections
