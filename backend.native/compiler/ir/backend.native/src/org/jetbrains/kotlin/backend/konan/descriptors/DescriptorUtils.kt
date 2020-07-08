@@ -124,10 +124,10 @@ internal fun IrType.isNullableNothing() =
 private fun IrFunction.bridgeDirectionToAt(overriddenFunction: IrFunction, index: Int): BridgeDirection {
     val irClass = overriddenFunction.typeAt(index)?.erasure()
     return when {
-        index == 0 && returnType.isNothing() && !overriddenFunction.returnType.isNothing() ->
+        index == BridgeDirection.RETURN_INDEX && returnType.isNothing() && !overriddenFunction.returnType.isNothing() ->
             BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
 
-        index == 0 && returnType.isNullableNothing()
+        index == BridgeDirection.RETURN_INDEX && returnType.isNullableNothing()
                 && overriddenFunction.returnType.computePrimitiveBinaryTypeOrNull() == PrimitiveBinaryType.POINTER ->
             BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
 
