@@ -66,7 +66,32 @@ open class CompileToBitcode @Inject constructor(@InputDirectory val srcRoot: Fil
                     listOf("-std=gnu11", "-O3", "-Wall", "-Wextra", "-Wno-unknown-pragmas",
                             "-Werror", "-ftls-model=initial-exec", "-Wno-unused-function")
                 Language.CPP ->
-                    listOfNotNull("-std=c++14", "-Werror", "-O2",
+                    listOfNotNull("-std=c++14",
+                            "-Wall", "-Wextra",
+                            "-Wbad-function-cast",
+                            // "-Wcast-qual",
+                            "-Wcomma",
+                            // "-Wconditional-uninitialized",
+                            // "-Wconversion",
+                            // "-Wextra-semi-stmt",
+                            // "-Wfloat-equal",
+                            // "-Widiomatic-parentheses",
+                            "-Wimplicit-fallthrough",
+                            "-Wloop-analysis",
+                            // "-Wmissing-noreturn",
+                            "-Wnon-virtual-dtor",
+                            "-Wswitch-enum",
+                            // "-Wundef",
+                            "-Wundefined-reinterpret-cast",
+                            "-Wunreachable-code",
+                            // "-Wzero-as-null-pointer-constant",
+                            // TODO: Consider removing these exceptions:
+                            "-Wno-char-subscripts",
+                            "-Wno-sign-compare",
+                            "-Wno-unused",
+                            "-Wno-unused-parameter",
+                            "-Wno-pessimizing-move",
+                            "-Werror", "-O2",
                             "-fPIC".takeIf { !HostManager().targetByName(target).isMINGW })
             }
             return commonFlags + languageFlags + compilerArgs
