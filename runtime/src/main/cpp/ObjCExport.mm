@@ -900,7 +900,7 @@ static const TypeInfo* createTypeInfo(Class clazz, const TypeInfo* superType, co
       auto interfaceVTablesIt = interfaceVTables.find(interfaceId);
       if (interfaceVTablesIt == interfaceVTables.end()) {
         itableEqualsSuper = false;
-        interfaceVTables.emplace(interfaceId, std::move(KStdVector<VTableElement>(interfaceVTableSize)));
+        interfaceVTables.emplace(interfaceId, KStdVector<VTableElement>(interfaceVTableSize));
       } else {
         auto const& interfaceVTable = interfaceVTablesIt->second;
         RuntimeAssert(interfaceVTable.size() == interfaceVTableSize, "");

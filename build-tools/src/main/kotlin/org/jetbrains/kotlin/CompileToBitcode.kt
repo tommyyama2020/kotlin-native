@@ -89,7 +89,6 @@ open class CompileToBitcode @Inject constructor(@InputDirectory val srcRoot: Fil
                             "-Wno-char-subscripts",
                             "-Wno-sign-compare",
                             "-Wno-unused-parameter",
-                            "-Wno-pessimizing-move",
                             "-Werror", "-O2",
                             "-fPIC".takeIf { !HostManager().targetByName(target).isMINGW })
             }
