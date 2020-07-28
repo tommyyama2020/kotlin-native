@@ -88,7 +88,6 @@ open class CompileToBitcode @Inject constructor(@InputDirectory val srcRoot: Fil
                             // TODO: Consider removing these exceptions:
                             "-Wno-char-subscripts",
                             "-Wno-sign-compare",
-                            "-Wno-unused",
                             "-Wno-unused-parameter",
                             "-Wno-pessimizing-move",
                             "-Werror", "-O2",

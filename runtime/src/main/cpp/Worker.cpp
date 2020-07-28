@@ -407,7 +407,6 @@ class State {
   }
 
   OBJ_GETTER(getWorkerNameUnlocked, KInt id) {
-    Worker* worker = nullptr;
     ObjHolder nameHolder;
     {
       Locker locker(&lock_);
@@ -566,7 +565,6 @@ KInt currentWorker() {
 }
 
 KInt execute(KInt id, KInt transferMode, KRef producer, KNativePtr jobFunction) {
-  Job job;
   ObjHolder holder;
   WorkerLaunchpad(producer, holder.slot());
   KNativePtr jobArgument = transfer(&holder, transferMode);
