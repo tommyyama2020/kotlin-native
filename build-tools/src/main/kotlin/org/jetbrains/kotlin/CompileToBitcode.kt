@@ -87,7 +87,7 @@ open class CompileToBitcode @Inject constructor(@InputDirectory val srcRoot: Fil
                             // "-Wzero-as-null-pointer-constant",
                             // TODO: Consider removing these exceptions:
                             "-Wno-char-subscripts",
-                            "-Wno-sign-compare",
+                            "-Wno-sign-compare",  // TODO: Remove this exception as it's errorprone.
                             "-Wno-unused-parameter",  // false positives with link-time polymorphic functions.
                             "-Werror", "-O2",
                             "-fPIC".takeIf { !HostManager().targetByName(target).isMINGW })
