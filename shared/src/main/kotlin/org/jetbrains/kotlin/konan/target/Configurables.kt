@@ -16,7 +16,47 @@
 
 package org.jetbrains.kotlin.konan.target
 
-import org.jetbrains.kotlin.konan.properties.*
+/**
+ * Adds trivial symbol resolving mechanism to properties files.
+ *
+ * Given the following properties file:
+ *
+ *  key1 = value1
+ *  key2 = $key1
+ *
+ * ResolvableProperties.resolve("key2") will return "value1".
+ */
+interface ResolvableProperties {
+    fun readProperty(name: String): String
+
+    fun String.resolveValue(visitedProperties: MutableSet<String> = mutableSetOf()): String =
+            when {
+                startsWith("$") -> {
+                    // Keep track of visited properties to avoid running in circles.
+                    if (!visitedProperties.add(this)) {
+                        error("Circular dependency: $visitedProperties")
+                    }
+                    visitedProperties += this
+                    val propertyName = this.substringAfter('$')
+                    readProperty(propertyName).resolveValue(visitedProperties)
+                }
+                else -> this
+            }
+
+    fun resolve(value: String): String =
+            value.resolveValue()
+}
+
+interface TargetableExternalStorage : ResolvableProperties {
+    fun targetString(key: String): String?
+    fun targetList(key: String): List<String>
+    fun hostString(key: String): String?
+    fun hostList(key: String): List<String>
+    fun hostTargetString(key: String): String?
+    fun hostTargetList(key: String): List<String>
+    fun absolute(value: String?): String
+    fun downloadDependencies()
+}
 
 interface ClangFlags : TargetableExternalStorage {
     val clangFlags get()        = targetList("clangFlags")
@@ -46,11 +86,11 @@ interface Configurables : TargetableExternalStorage {
     val targetSysRoot get() = targetString("targetSysRoot")
 
     // Notice: these ones are host-target.
-    val targetToolchain get() = hostTargetString("targetToolchain")
+    val targetToolchain get() = hostTargetString("targetToolchain")?.resolveValue()
 
     val absoluteTargetSysRoot get() = absolute(targetSysRoot)
     val absoluteTargetToolchain get() = absolute(targetToolchain)
-    val absoluteLlvmHome get() = absolute(llvmHome)
+    val absoluteLlvmHome get() = absolute(llvmHome?.resolveValue())
 }
 
 interface TargetableConfigurables : Configurables {

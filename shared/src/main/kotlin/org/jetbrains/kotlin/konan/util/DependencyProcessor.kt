@@ -249,6 +249,9 @@ class DependencyProcessor(dependenciesRoot: File,
         }
     }
 
+    fun resolveFile(path: String): File =
+        if (Paths.get(path).isAbsolute) File(path) else resolveRelative(path)
+
     fun resolveRelative(relative: String): File {
         val path = Paths.get(relative)
         if (path.isAbsolute) error("not a relative path: $relative")
