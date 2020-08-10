@@ -1584,7 +1584,7 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
         return !irClass.isFrozen
     }
 
-    private fun isDefaultValue(value: IrExpression): Boolean {
+    private fun isZeroConstValue(value: IrExpression): Boolean {
         if (value !is IrConst<*>) return false
         return when (value.kind) {
             IrConstKind.Null -> true
@@ -1594,8 +1594,8 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
             IrConstKind.Short -> (value.value as Short) == 0.toShort()
             IrConstKind.Int -> (value.value as Int) == 0
             IrConstKind.Long -> (value.value as Long) == 0L
-            IrConstKind.Float -> (value.value as Float) == 0.0f
-            IrConstKind.Double -> (value.value as Double) == 0.0
+            IrConstKind.Float -> (value.value as Float).toRawBits() == 0
+            IrConstKind.Double -> (value.value as Double).toRawBits() == 0L
             IrConstKind.String -> false
         }
     }
@@ -1603,9 +1603,10 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
     private fun evaluateSetField(value: IrSetField): LLVMValueRef {
         context.log{"evaluateSetField               : ${ir2string(value)}"}
         if (value.origin == IrStatementOrigin.INITIALIZE_FIELD
-                && isDefaultValue(value.value)) {
+                && isZeroConstValue(value.value)) {
             // All newly allocated objects are zeroed out, so it is redundant to initialize their
             // fields with the default values. This is also aligned with the Kotlin/JVM behavior.
+            // See https://youtrack.jetbrains.com/issue/KT-39100 for details.
             return codegen.theUnitInstanceRef.llvm
         }
 
