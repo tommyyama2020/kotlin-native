@@ -1584,8 +1584,31 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
         return !irClass.isFrozen
     }
 
+    private fun isDefaultValue(value: IrExpression): Boolean {
+        if (value !is IrConst<*>) return false
+        return when (value.kind) {
+            IrConstKind.Null -> true
+            IrConstKind.Boolean -> (value.value as Boolean) == false
+            IrConstKind.Byte -> (value.value as Byte) == 0.toByte()
+            IrConstKind.Char -> (value.value as Char) == 0.toChar()
+            IrConstKind.Short -> (value.value as Short) == 0.toShort()
+            IrConstKind.Int -> (value.value as Int) == 0
+            IrConstKind.Long -> (value.value as Long) == 0L
+            IrConstKind.Float -> (value.value as Float) == 0.0f
+            IrConstKind.Double -> (value.value as Double) == 0.0
+            IrConstKind.String -> false
+        }
+    }
+
     private fun evaluateSetField(value: IrSetField): LLVMValueRef {
         context.log{"evaluateSetField               : ${ir2string(value)}"}
+        if (value.origin == IrStatementOrigin.INITIALIZE_FIELD
+                && isDefaultValue(value.value)) {
+            // All newly allocated objects are zeroed out, so it is redundant to initialize their
+            // fields with the default values. This is also aligned with the Kotlin/JVM behavior.
+            return codegen.theUnitInstanceRef.llvm
+        }
+
         val valueToAssign = evaluateExpression(value.value)
         val store = if (!value.symbol.owner.isStatic) {
             val thisPtr = evaluateExpression(value.receiver!!)
