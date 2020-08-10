@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.backend.konan.descriptors
 import org.jetbrains.kotlin.backend.common.atMostOne
 import org.jetbrains.kotlin.backend.konan.*
 import org.jetbrains.kotlin.backend.konan.ir.*
+import org.jetbrains.kotlin.backend.konan.llvm.isVoidAsReturnType
 import org.jetbrains.kotlin.backend.konan.llvm.longName
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.Modality
@@ -74,26 +75,33 @@ internal val IrClass.isArrayWithFixedSizeItems: Boolean
 
 fun IrClass.isAbstract() = this.modality == Modality.SEALED || this.modality == Modality.ABSTRACT
 
-private fun IrFunction.hasValueTypeAt(index: ParameterIndex) = when (index) {
-    ParameterIndex.RETURN_INDEX -> !isSuspend && returnType.let { (it.isInlinedNative() || it.isUnit()) }
-    ParameterIndex.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter.let { it != null && it.type.isInlinedNative() }
-    ParameterIndex.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter.let { it != null && it.type.isInlinedNative() }
-    else -> this.valueParameters[index.unmap()].type.isInlinedNative()
+private sealed class TypeKind(val irType: IrType?) {
+    object Absent : TypeKind(null)
+    class ValueType(irType: IrType?) : TypeKind(irType)
+    class Reference(irType: IrType?) : TypeKind(irType)
+
+    companion object {
+        fun fromType(irType: IrType?) = when {
+            irType == null -> Absent
+            irType.isInlinedNative() -> ValueType(irType)
+            else -> Reference(irType)
+        }
+    }
 }
 
-private fun IrFunction.hasReferenceAt(index: ParameterIndex) = when (index) {
-    ParameterIndex.RETURN_INDEX -> isSuspend || returnType.let { !it.isInlinedNative() && !it.isUnit() }
-    ParameterIndex.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter.let { it != null && !it.type.isInlinedNative() }
-    ParameterIndex.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter.let { it != null && !it.type.isInlinedNative() }
-    else -> !this.valueParameters[index.unmap()].type.isInlinedNative()
+private fun IrFunction.typeKindAt(index: ParameterIndex) = when (index) {
+    ParameterIndex.RETURN_INDEX -> when {
+        isSuspend -> TypeKind.Reference(null)
+        returnType.isVoidAsReturnType() -> TypeKind.ValueType(returnType)
+        else -> TypeKind.fromType(returnType)
+    }
+    ParameterIndex.DISPATCH_RECEIVER_INDEX -> TypeKind.fromType(dispatchReceiverParameter?.type)
+    ParameterIndex.EXTENSION_RECEIVER_INDEX -> TypeKind.fromType(extensionReceiverParameter?.type)
+    else -> TypeKind.fromType(this.valueParameters[index.unmap()].type)
 }
 
-private fun IrFunction.typeAt(index: ParameterIndex) = when (index) {
-    ParameterIndex.RETURN_INDEX -> if (isSuspend) null else returnType
-    ParameterIndex.DISPATCH_RECEIVER_INDEX -> dispatchReceiverParameter?.type
-    ParameterIndex.EXTENSION_RECEIVER_INDEX -> extensionReceiverParameter?.type
-    else -> this.valueParameters[index.unmap()].type
-}
+private fun IrFunction.hasValueTypeAt(index: ParameterIndex) = typeKindAt(index) is TypeKind.ValueType
+private fun IrFunction.hasReferenceAt(index: ParameterIndex) = typeKindAt(index) is TypeKind.Reference
 
 private fun IrFunction.needBridgeToAt(target: IrFunction, index: ParameterIndex)
         = bridgeDirectionToAt(target, index).kind != BridgeDirectionKind.NONE
@@ -139,7 +147,7 @@ private fun IrType.isNullableNothing() =
         isNullable() && classifierOrNull?.isClassWithFqName(KotlinBuiltIns.FQ_NAMES.nothing) == true
 
 private fun IrFunction.bridgeDirectionToAt(overriddenFunction: IrFunction, index: ParameterIndex): BridgeDirection {
-    val irClass = overriddenFunction.typeAt(index)?.erasure()
+    val irClass = overriddenFunction.typeKindAt(index).irType?.erasure()
     return when {
         index == ParameterIndex.RETURN_INDEX && returnType.isNothing() && !overriddenFunction.returnType.isNothing() ->
             BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
