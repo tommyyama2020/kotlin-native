@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.backend.konan.*
 import org.jetbrains.kotlin.backend.konan.ir.*
 import org.jetbrains.kotlin.backend.konan.llvm.isVoidAsReturnType
 import org.jetbrains.kotlin.backend.konan.llvm.longName
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
 import org.jetbrains.kotlin.ir.declarations.*
@@ -75,33 +74,33 @@ internal val IrClass.isArrayWithFixedSizeItems: Boolean
 
 fun IrClass.isAbstract() = this.modality == Modality.SEALED || this.modality == Modality.ABSTRACT
 
-private sealed class TypeKind(val irType: IrType?) {
-    object Absent : TypeKind(null)
-    class ValueType(irType: IrType?) : TypeKind(irType)
-    class Reference(irType: IrType?) : TypeKind(irType)
+private enum class TypeKind {
+    ABSENT,
+    VOID,
+    VALUE_TYPE,
+    REFERENCE
+}
 
+private data class TypeWithKind(val irType: IrType?, val kind: TypeKind) {
     companion object {
         fun fromType(irType: IrType?) = when {
-            irType == null -> Absent
-            irType.isInlinedNative() -> ValueType(irType)
-            else -> Reference(irType)
+            irType == null -> TypeWithKind(null, TypeKind.ABSENT)
+            irType.isInlinedNative() -> TypeWithKind(irType, TypeKind.VALUE_TYPE)
+            else -> TypeWithKind(irType, TypeKind.REFERENCE)
         }
     }
 }
 
-private fun IrFunction.typeKindAt(index: ParameterIndex) = when (index) {
+private fun IrFunction.typeWithKindAt(index: ParameterIndex) = when (index) {
     ParameterIndex.RETURN_INDEX -> when {
-        isSuspend -> TypeKind.Reference(null)
-        returnType.isVoidAsReturnType() -> TypeKind.ValueType(returnType)
-        else -> TypeKind.fromType(returnType)
+        isSuspend -> TypeWithKind(null, TypeKind.REFERENCE)
+        returnType.isVoidAsReturnType() -> TypeWithKind(null, TypeKind.VOID)
+        else -> TypeWithKind.fromType(returnType)
     }
-    ParameterIndex.DISPATCH_RECEIVER_INDEX -> TypeKind.fromType(dispatchReceiverParameter?.type)
-    ParameterIndex.EXTENSION_RECEIVER_INDEX -> TypeKind.fromType(extensionReceiverParameter?.type)
-    else -> TypeKind.fromType(this.valueParameters[index.unmap()].type)
+    ParameterIndex.DISPATCH_RECEIVER_INDEX -> TypeWithKind.fromType(dispatchReceiverParameter?.type)
+    ParameterIndex.EXTENSION_RECEIVER_INDEX -> TypeWithKind.fromType(extensionReceiverParameter?.type)
+    else -> TypeWithKind.fromType(this.valueParameters[index.unmap()].type)
 }
-
-private fun IrFunction.hasValueTypeAt(index: ParameterIndex) = typeKindAt(index) is TypeKind.ValueType
-private fun IrFunction.hasReferenceAt(index: ParameterIndex) = typeKindAt(index) is TypeKind.Reference
 
 private fun IrFunction.needBridgeToAt(target: IrFunction, index: ParameterIndex)
         = bridgeDirectionToAt(target, index).kind != BridgeDirectionKind.NONE
@@ -143,28 +142,14 @@ internal data class BridgeDirection(val irClass: IrClass?, val kind: BridgeDirec
     }
 }
 
-private fun IrType.isNullableNothing() =
-        isNullable() && classifierOrNull?.isClassWithFqName(KotlinBuiltIns.FQ_NAMES.nothing) == true
-
 private fun IrFunction.bridgeDirectionToAt(overriddenFunction: IrFunction, index: ParameterIndex): BridgeDirection {
-    val irClass = overriddenFunction.typeKindAt(index).irType?.erasure()
-    return when {
-        index == ParameterIndex.RETURN_INDEX && returnType.isNothing() && !overriddenFunction.returnType.isNothing() ->
-            BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
-
-        index == ParameterIndex.RETURN_INDEX && returnType.isNullableNothing()
-                && overriddenFunction.returnType.computePrimitiveBinaryTypeOrNull() == PrimitiveBinaryType.POINTER ->
-            BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
-
-        hasValueTypeAt(index) && overriddenFunction.hasReferenceAt(index) ->
-            // Erase to [Any?].
-            BridgeDirection(null, BridgeDirectionKind.BOX)
-
-        hasReferenceAt(index) && overriddenFunction.hasValueTypeAt(index) ->
-            BridgeDirection(irClass, BridgeDirectionKind.UNBOX)
-
-        else -> BridgeDirection.NONE
-    }
+    val kind = typeWithKindAt(index).kind
+    val (irClass, otherKind) = overriddenFunction.typeWithKindAt(index)
+    if ((kind == TypeKind.VOID || kind == TypeKind.REFERENCE) && otherKind != kind)
+        return BridgeDirection(irClass?.erasure(), BridgeDirectionKind.UNBOX)
+    if (kind == TypeKind.VALUE_TYPE && otherKind == TypeKind.REFERENCE)
+        return BridgeDirection(null /* Erase to [Any?] */, BridgeDirectionKind.BOX)
+    return BridgeDirection.NONE
 }
 
 private tailrec fun IrType.erasure(): IrClass =
