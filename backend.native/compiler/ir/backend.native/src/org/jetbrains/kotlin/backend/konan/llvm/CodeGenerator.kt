@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.util.*
-import org.jetbrains.kotlin.backend.konan.descriptors.resolveFakeOverride
 import org.jetbrains.kotlin.backend.konan.ir.*
 import org.jetbrains.kotlin.descriptors.konan.CompiledKlibModuleOrigin
 import org.jetbrains.kotlin.ir.expressions.IrDelegatingConstructorCall
@@ -162,11 +161,11 @@ private inline fun <R> generateFunctionBody(
 internal data class LocationInfoRange(var start: LocationInfo, var end: LocationInfo?)
 
 internal interface StackLocalsManager {
-    fun alloc(irClass: IrClass): LLVMValueRef
+    fun alloc(irClass: IrClass, cleanFieldsExplicitly: Boolean): LLVMValueRef
 
     fun allocArray(irClass: IrClass, count: LLVMValueRef): LLVMValueRef
 
-    fun clean()
+    fun clean(refsOnly: Boolean)
 }
 
 internal class StackLocalsManagerImpl(
@@ -178,7 +177,7 @@ internal class StackLocalsManagerImpl(
 
     private val stackLocals = mutableListOf<StackLocal>()
 
-    override fun alloc(irClass: IrClass): LLVMValueRef = with(functionGenerationContext) {
+    override fun alloc(irClass: IrClass, cleanFieldsExplicitly: Boolean): LLVMValueRef = with(functionGenerationContext) {
         val type = context.llvmDeclarations.forClass(irClass).bodyType
         val stackLocal = appendingTo(bbInitStackLocals) {
             val stackSlot = LLVMBuildAlloca(builder, type, "")!!
@@ -194,7 +193,10 @@ internal class StackLocalsManagerImpl(
             setTypeInfoForLocalObject(objectHeader, typeInfo)
             StackLocal(false, irClass, stackSlot, objectHeader)
         }
+
         stackLocals += stackLocal
+        if (cleanFieldsExplicitly)
+            clean(stackLocal, false)
         stackLocal.objHeaderPtr
     }
 
@@ -250,9 +252,9 @@ internal class StackLocalsManagerImpl(
         bitcast(kObjHeaderPtr, stackLocal.objHeaderPtr)
     }
 
-    override fun clean() = stackLocals.forEach { clean(it) }
+    override fun clean(refsOnly: Boolean) = stackLocals.forEach { clean(it, refsOnly) }
 
-    private fun clean(stackLocal: StackLocal) = with(functionGenerationContext) {
+    private fun clean(stackLocal: StackLocal, refsOnly: Boolean) = with(functionGenerationContext) {
         if (stackLocal.isArray) {
             if (stackLocal.irClass.symbol == context.ir.symbols.array)
                 call(context.llvm.zeroArrayRefsFunction, listOf(stackLocal.objHeaderPtr))
@@ -264,8 +266,24 @@ internal class StackLocalsManagerImpl(
 
                 if (isObjectType(fieldType)) {
                     val fieldPtr = LLVMBuildStructGEP(builder, stackLocal.bodyPtr, fieldIndex, "")!!
-                    storeHeapRef(kNullObjHeaderPtr, fieldPtr)
+                    if (refsOnly)
+                        storeHeapRef(kNullObjHeaderPtr, fieldPtr)
+                    else
+                        call(context.llvm.releaseHeapRefFunction, listOf(LLVMBuildLoad(builder, fieldPtr, "")!!))
                 }
+            }
+
+            if (!refsOnly) {
+                val bodyPtr = ptrToInt(stackLocal.bodyPtr, codegen.intPtrType)
+                val bodySize = LLVMSizeOfTypeInBits(codegen.llvmTargetData, type).toInt() / 8
+                val serviceInfoSize = runtime.pointerSize
+                val serviceInfoSizeLlvm = LLVMConstInt(codegen.intPtrType, serviceInfoSize.toLong(), 1)!!
+                val bodyWithSkippedServiceInfoPtr = intToPtr(add(bodyPtr, serviceInfoSizeLlvm), kInt8Ptr)
+                call(context.llvm.memsetFunction,
+                        listOf(bodyWithSkippedServiceInfoPtr,
+                                Int8(0).llvm,
+                                Int32(bodySize - serviceInfoSize).llvm,
+                                Int1(0).llvm))
             }
         }
     }
@@ -315,7 +333,7 @@ internal class FunctionGenerationContext(val function: LLVMValueRef,
     private val epilogueBb = basicBlockInFunction("epilogue", endLocation)
     private val cleanupLandingpad = basicBlockInFunction("cleanup_landingpad", endLocation)
 
-    private val stackLocalsManager = StackLocalsManagerImpl(this, stackLocalsInitBb)
+    val stackLocalsManager = StackLocalsManagerImpl(this, stackLocalsInitBb)
 
     /**
      * TODO: consider merging this with [ExceptionHandler].
@@ -547,9 +565,12 @@ internal class FunctionGenerationContext(val function: LLVMValueRef,
     fun allocInstance(typeInfo: LLVMValueRef, lifetime: Lifetime): LLVMValueRef =
             call(context.llvm.allocInstanceFunction, listOf(typeInfo), lifetime)
 
-    fun allocInstance(irClass: IrClass, lifetime: Lifetime) =
+    fun allocInstance(irClass: IrClass, lifetime: Lifetime, stackLocalsManager: StackLocalsManager) =
             if (lifetime == Lifetime.STACK)
-                stackLocalsManager.alloc(irClass)
+                stackLocalsManager.alloc(irClass,
+                        // In case the allocation is not from the root scope, fields must be cleaned up explicitly,
+                        // as the object might be being reused.
+                        cleanFieldsExplicitly = stackLocalsManager != this.stackLocalsManager)
             else
                 allocInstance(codegen.typeInfoForAllocation(irClass), lifetime)
 
@@ -1360,7 +1381,7 @@ internal class FunctionGenerationContext(val function: LLVMValueRef,
             call(context.llvm.leaveFrameFunction,
                     listOf(slotsPhi!!, Int32(vars.skipSlots).llvm, Int32(slotCount).llvm))
         }
-        stackLocalsManager.clean()
+        stackLocalsManager.clean(refsOnly = true) // Only bother about not leaving any dangling references.
     }
 }
 
